@@ -2,7 +2,7 @@
 // An example of a consumer contract that relies on a subscription for funding.
 pragma solidity ^0.8.20;
 
-import "chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
 import "chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 
@@ -41,7 +41,7 @@ contract RandomTest is VRFConsumerBaseV2, ConfirmedOwner {
     // For a list of available gas lanes on each network,
     // see https://docs.chain.link/docs/vrf/v2/subscription/supported-networks/#configurations
     bytes32 keyHash =
-        0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c;
+        0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f;
 
     // Depends on the number of requested values that you want sent to the
     // fulfillRandomWords() function. Storing each word costs about 20,000 gas,
