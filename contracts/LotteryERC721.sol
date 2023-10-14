@@ -5,6 +5,7 @@ import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerabl
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4906.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC165.sol";
+import "./IRandom.sol";
 
 contract LotteryERC721 is ERC721Enumerable, IERC4906 {
   uint256 public tokenCount;
@@ -34,9 +35,18 @@ contract LotteryERC721 is ERC721Enumerable, IERC4906 {
   mapping(uint256 => uint256) public ticketsSold;
   mapping(uint256 => mapping(address => uint256)) public ticketsBought;
   mapping(uint256 => address[]) public ticketBuyers;
-  mapping(uint256 => bool) public lotteryProcessed;
+  mapping(uint256 => uint8) public lotteryStatus;
+  mapping(uint256 => uint256) public lotteryRandomRequests;
 
-  constructor(string memory name, string memory symbol) ERC721(name, symbol) {}
+  IRandom public randomSource;
+
+  constructor(
+    string memory name,
+    string memory symbol,
+    IRandom _randomSource
+  ) ERC721(name, symbol) {
+    randomSource = _randomSource;
+  }
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable, IERC165) returns (bool) {
     return interfaceId == bytes4(0x49064906) || super.supportsInterface(interfaceId);
@@ -54,19 +64,51 @@ contract LotteryERC721 is ERC721Enumerable, IERC4906 {
     return newTokenId;
   }
 
-  function processLottery(uint256 tokenId) external {
+  function beginProcessLottery(uint256 tokenId) external {
     _requireOwned(tokenId);
     require(configs[tokenId].endTime < block.timestamp, "Lottery Not Yet Ended");
     require(ticketsSold[tokenId] > 0);
-    require(!lotteryProcessed[tokenId]);
-    lotteryProcessed[tokenId] = true;
+    require(lotteryStatus[tokenId] == 0);
+    lotteryStatus[tokenId] = 1;
+    require(lotteryRandomRequests[tokenId] == 0);
 
-    // TODO connect to actual randomness
-    uint256 randomWord =
-      0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f;
+    lotteryRandomRequests[tokenId] = randomSource.requestRandomUint64();
+  }
 
-    uint64 croppedRandom = uint64(randomWord);
-    uint256 winningTicket = ticketsSold[tokenId] * croppedRandom / 0xffffffffffffffff;
+  function finishProcessLottery(uint256 tokenId) external {
+    _requireOwned(tokenId);
+    require(lotteryStatus[tokenId] == 1);
+    lotteryStatus[tokenId] = 2;
+
+    (bool fulfilled, uint64 randomValue) = randomSource.getRequestStatus(lotteryRandomRequests[tokenId]);
+
+    require(fulfilled);
+
+    // TODO Test with 0 to make sure first ticket can win
+    uint256 winningTicket = ticketsSold[tokenId] * randomValue / 0xffffffffffffffff;
+
+    uint256 curPos;
+    address winner;
+    for(uint i = 0; i < ticketPurchases[tokenId].length; i++) {
+      curPos += ticketPurchases[tokenId][i].count;
+      if(curPos >= winningTicket) {
+        winner = ticketPurchases[tokenId][i].buyer;
+        break;
+      }
+    }
+    require(winner != address(0));
+
+    for(uint i = 0; i < configs[tokenId].shares.length; i++) {
+      address shareRecipient = configs[tokenId].shares[i].recipient;
+      uint256 shareAmount =
+        (configs[tokenId].shares[i].share *
+          ticketsSold[tokenId] *
+          configs[tokenId].ticketAmount)
+        / 0xffffffffffffffff;
+      // TODO allow more than one winner?
+      if(shareRecipient == address(0)) shareRecipient = winner;
+      IERC20(configs[tokenId].ticketToken).transfer(shareRecipient, shareAmount);
+    }
 
   }
 

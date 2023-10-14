@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 import "chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
 import "chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import "./IRandom.sol";
 
 /**
  * Request testnet LINK and ETH here: https://faucets.chain.link/
