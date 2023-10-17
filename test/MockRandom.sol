@@ -20,6 +20,6 @@ contract MockRandom is IRandom {
   }
 
   function getRequestStatus(uint256 _requestId) external view returns (bool fulfilled, uint64 randomValue) {
-    return (values[_requestId] > 0, values[_requestId]);
+    return (values.length > _requestId, values[_requestId]);
   }
 }
