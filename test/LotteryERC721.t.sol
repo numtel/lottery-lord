@@ -7,7 +7,7 @@ import "../contracts/DummyERC20.sol";
 import "./MockRandom.sol";
 import "./DummyTicketValidator.sol";
 
-contract LotteryERC721Test is Test {
+contract LotteryERC721Test is ILotteryERC721, Test {
     LotteryERC721 public collection;
     DummyERC20 public payToken;
     MockRandom public randomSource;
@@ -38,6 +38,9 @@ contract LotteryERC721Test is Test {
       uint256 sharesToBuy1 = 10000;
       payToken.mint(ticketPrice * sharesToBuy1);
       payToken.approve(address(collection), ticketPrice * sharesToBuy1);
+
+      vm.expectEmit();
+      emit ILotteryERC721.TicketsBought(tokenId, address(this), sharesToBuy1);
       collection.buyTickets(tokenId, sharesToBuy1);
 
       // Not yet ended
@@ -56,6 +59,8 @@ contract LotteryERC721Test is Test {
       collection.finishProcessLottery(tokenId);
 
       randomSource.pushValue(0x7777777777777777);
+      vm.expectEmit();
+      emit ILotteryERC721.LotteryEnded(tokenId, address(this));
       collection.finishProcessLottery(tokenId);
 
       assertEq(payToken.balanceOf(address(this)), ticketPrice * sharesToBuy1 * 4/5);

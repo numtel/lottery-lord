@@ -80,6 +80,7 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
       }
     }
     require(winner != address(0));
+    emit LotteryEnded(tokenId, winner);
 
     for(uint i = 0; i < configs[tokenId].shares.length; i++) {
       address shareRecipient = configs[tokenId].shares[i].recipient;
@@ -96,6 +97,7 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   }
 
   function buyTickets(uint256 tokenId, uint256 ticketCount) external {
+    emit TicketsBought(tokenId, msg.sender, ticketCount);
     _requireOwned(tokenId);
     require(configs[tokenId].endTime > block.timestamp, "Lottery Ended");
     require(ticketCount > 0);
