@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../contracts/LotteryERC721.sol";
 import "../contracts/DummyERC20.sol";
 import "./MockRandom.sol";
+import "./DummyTicketValidator.sol";
 
 contract LotteryERC721Test is Test {
     LotteryERC721 public collection;
@@ -18,7 +19,7 @@ contract LotteryERC721Test is Test {
     }
 
     function testSingleBuyer() public {
-      LotteryERC721.PotShareEntry[] memory shares = new LotteryERC721.PotShareEntry[](2);
+      ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](2);
       shares[0].recipient = address(0);
       shares[0].share = 0xcccccccccccccccc;
       shares[1].recipient = address(1);
@@ -27,7 +28,7 @@ contract LotteryERC721Test is Test {
       uint256 ticketPrice = 1000;
       uint256 duration = 100;
 
-      LotteryERC721.LotteryConfig memory config = LotteryERC721.LotteryConfig(
+      ILotteryERC721.LotteryConfig memory config = ILotteryERC721.LotteryConfig(
         'Test Lottery', 'Winner take all?', shares, ticketPrice, address(payToken),
         block.timestamp + duration, address(0)
       );
@@ -65,7 +66,7 @@ contract LotteryERC721Test is Test {
     function testManyBuyers(uint64 randomValue, uint256 buyerCount, uint64 shareToCause) public {
       buyerCount = bound(buyerCount, 1, 90);
 
-      LotteryERC721.PotShareEntry[] memory shares = new LotteryERC721.PotShareEntry[](2);
+      ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](2);
       shares[0].recipient = address(0);
       shares[0].share = 0xffffffffffffffff - shareToCause;
       shares[1].recipient = address(1);
@@ -74,7 +75,7 @@ contract LotteryERC721Test is Test {
       uint256 ticketPrice = 1000;
       uint256 duration = 100;
 
-      LotteryERC721.LotteryConfig memory config = LotteryERC721.LotteryConfig(
+      ILotteryERC721.LotteryConfig memory config = ILotteryERC721.LotteryConfig(
         'Test Lottery', 'Winner take all?', shares, ticketPrice, address(payToken),
         block.timestamp + duration, address(0)
       );
@@ -119,6 +120,53 @@ contract LotteryERC721Test is Test {
       assertEq(payToken.balanceOf(address(1)), ticketPrice * totalSharesBought * shareToCause / 0xffffffffffffffff);
       // XXX Rounding error acceptable?
       assertEq(payToken.balanceOf(address(collection)) <= 1, true);
+    }
+
+    function testValidator() public {
+      ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](1);
+      shares[0].recipient = address(0);
+      shares[0].share = 0xffffffffffffffff;
+
+      uint256 ticketPrice = 1000;
+      uint256 duration = 100;
+      uint256 minimumPurchase = 100;
+
+      DummyTicketValidator validator = new DummyTicketValidator(
+        minimumPurchase,
+        address(this)
+      );
+
+      ILotteryERC721.LotteryConfig memory config = ILotteryERC721.LotteryConfig(
+        'Test Lottery', 'Winner take all?', shares, ticketPrice, address(payToken),
+        block.timestamp + duration, address(validator)
+      );
+
+      uint256 tokenId = collection.mint(config);
+
+      payToken.mint(ticketPrice * minimumPurchase);
+      payToken.approve(address(collection), ticketPrice * minimumPurchase);
+
+      vm.expectRevert();
+      collection.buyTickets(tokenId, minimumPurchase - 1);
+
+      collection.buyTickets(tokenId, minimumPurchase);
+
+      vm.startPrank(address(1));
+      payToken.mint(ticketPrice * minimumPurchase);
+      payToken.approve(address(collection), ticketPrice * minimumPurchase);
+
+      vm.expectRevert();
+      collection.buyTickets(tokenId, minimumPurchase);
+      vm.stopPrank();
+
+      vm.warp(block.timestamp + duration + 3);
+      collection.beginProcessLottery(tokenId);
+
+      randomSource.pushValue(0x7777777777777777);
+      collection.finishProcessLottery(tokenId);
+
+      assertEq(payToken.balanceOf(address(this)), ticketPrice * minimumPurchase);
+      assertEq(payToken.balanceOf(address(collection)), 0);
     }
 }
 

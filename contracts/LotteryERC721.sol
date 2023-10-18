@@ -6,34 +6,17 @@ import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4906.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC165.sol";
 import "./IRandom.sol";
+import "./ITicketValidator.sol";
+import "./ILotteryERC721.sol";
 
-contract LotteryERC721 is ERC721Enumerable, IERC4906 {
+contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   uint256 public tokenCount;
-
-  struct PotShareEntry {
-    address recipient;
-    uint64 share;
-  }
-
-  struct LotteryConfig {
-    string name;
-    string description;
-    PotShareEntry[] shares;
-    uint256 ticketAmount;
-    address ticketToken;
-    uint256 endTime;
-    address ticketValidator;
-  }
-
-  struct TicketPurchase {
-    address buyer;
-    uint256 count;
-  }
 
   mapping(uint256 => LotteryConfig) public configs;
   mapping(uint256 => TicketPurchase[]) public ticketPurchases;
   mapping(uint256 => uint256) public ticketsSold;
   mapping(uint256 => mapping(address => uint256)) public ticketsBought;
+  mapping(address => uint256[]) public ticketsByAccount;
   mapping(uint256 => address[]) public ticketBuyers;
   mapping(uint256 => uint8) public lotteryStatus;
   mapping(uint256 => uint256) public lotteryRandomRequests;
@@ -116,14 +99,24 @@ contract LotteryERC721 is ERC721Enumerable, IERC4906 {
     _requireOwned(tokenId);
     require(configs[tokenId].endTime > block.timestamp, "Lottery Ended");
     require(ticketCount > 0);
-    // TODO callback to validator if specified
     uint256 saleAmount = ticketCount * configs[tokenId].ticketAmount;
     IERC20(configs[tokenId].ticketToken).transferFrom(msg.sender, address(this), saleAmount);
+
+    // callback to validator if specified
+    if(configs[tokenId].ticketValidator != address(0)) {
+      ITicketValidator(configs[tokenId].ticketValidator).validate(
+        tokenId,
+        configs[tokenId],
+        msg.sender,
+        ticketCount
+      );
+    }
 
     ticketPurchases[tokenId].push(TicketPurchase(msg.sender, ticketCount));
     ticketsSold[tokenId] += ticketCount;
     if(ticketsBought[tokenId][msg.sender] == 0) {
       ticketBuyers[tokenId].push(msg.sender);
+      ticketsByAccount[msg.sender].push(tokenId);
     }
     ticketsBought[tokenId][msg.sender] += ticketCount;
   }
