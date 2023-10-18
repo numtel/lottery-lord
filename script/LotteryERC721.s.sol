@@ -3,14 +3,18 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 
-import "../contracts/RandomTest.sol";
+import "../contracts/LotteryERC721.sol";
 
 contract Deploy is Script {
   function run() external {
     uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
     vm.startBroadcast(deployerPrivateKey);
 
-    new RandomTest(6187);
+    string memory name = vm.envString("COLLECTION_NAME");
+    string memory symbol = vm.envString("COLLECTION_SYMBOL");
+    address randomSource = vm.envAddress("RANDOM_SOURCE");
+
+    new LotteryERC721(name, symbol, IRandom(randomSource));
 
     vm.stopBroadcast();
   }

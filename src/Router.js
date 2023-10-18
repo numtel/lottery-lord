@@ -4,9 +4,7 @@ import { Layout } from './components/Layout.js';
 import { Lotto } from './pages/Lotto.js';
 import { User } from './pages/User.js';
 import { Home } from './pages/Home.js';
-
-// TODO this should be in a contract config file
-const defaultChain = 1;
+import { defaultChain } from './contracts.js';
 
 export function Router() {
   return (

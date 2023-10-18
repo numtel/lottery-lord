@@ -67,7 +67,6 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
 
     require(fulfilled);
 
-    // TODO Test with 0 to make sure first ticket can win
     uint256 winningTicket = ticketsSold[tokenId] * randomValue / 0xffffffffffffffff;
 
     uint256 curPos;

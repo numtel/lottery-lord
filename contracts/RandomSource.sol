@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// An example of a consumer contract that relies on a subscription for funding.
 pragma solidity ^0.8.20;
 
 import "chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
@@ -7,18 +6,7 @@ import "chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "./IRandom.sol";
 
-/**
- * Request testnet LINK and ETH here: https://faucets.chain.link/
- * Find information on LINK Token Contracts and get the latest ETH and LINK faucets here: https://docs.chain.link/docs/link-token-contracts/
- */
-
-/**
- * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
- * THIS IS AN EXAMPLE CONTRACT THAT USES UN-AUDITED CODE.
- * DO NOT USE THIS CODE IN PRODUCTION.
- */
-
-contract RandomTest is VRFConsumerBaseV2, ConfirmedOwner {
+contract RandomSource is IRandom, VRFConsumerBaseV2, ConfirmedOwner {
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
 
@@ -38,11 +26,7 @@ contract RandomTest is VRFConsumerBaseV2, ConfirmedOwner {
     uint256[] public requestIds;
     uint256 public lastRequestId;
 
-    // The gas lane to use, which specifies the maximum gas price to bump to.
-    // For a list of available gas lanes on each network,
-    // see https://docs.chain.link/docs/vrf/v2/subscription/supported-networks/#configurations
-    bytes32 keyHash =
-        0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f;
+    bytes32 keyHash;
 
     // Depends on the number of requested values that you want sent to the
     // fulfillRandomWords() function. Storing each word costs about 20,000 gas,
@@ -55,28 +39,27 @@ contract RandomTest is VRFConsumerBaseV2, ConfirmedOwner {
     // The default is 3, but you can set this higher.
     uint16 requestConfirmations = 3;
 
-    // For this example, retrieve 2 random values in one request.
     // Cannot exceed VRFCoordinatorV2.MAX_NUM_WORDS.
-    uint32 numWords = 2;
+    uint32 numWords = 1;
 
-    /**
-     * HARDCODED FOR MUMBAI
-     * COORDINATOR: 0x7a1BaC17Ccc5b313516C5E16fb24f7659aA5ebed
-     */
     constructor(
-        uint64 subscriptionId
+        uint64 subscriptionId,
+        address _coordinator,
+        // The gas lane to use, which specifies the maximum gas price to bump to.
+        // For a list of available gas lanes on each network,
+        // see https://docs.chain.link/docs/vrf/v2/subscription/supported-networks/#configurations
+        bytes32 _keyHash
     )
-        VRFConsumerBaseV2(0x7a1BaC17Ccc5b313516C5E16fb24f7659aA5ebed)
+        VRFConsumerBaseV2(_coordinator)
         ConfirmedOwner(msg.sender)
     {
-        COORDINATOR = VRFCoordinatorV2Interface(
-            0x7a1BaC17Ccc5b313516C5E16fb24f7659aA5ebed
-        );
+        COORDINATOR = VRFCoordinatorV2Interface(_coordinator);
         s_subscriptionId = subscriptionId;
+        keyHash = _keyHash;
     }
 
     // Assumes the subscription is funded sufficiently.
-    function requestRandomWords()
+    function requestRandomUint64()
         external
         onlyOwner
         returns (uint256 requestId)
@@ -112,10 +95,13 @@ contract RandomTest is VRFConsumerBaseV2, ConfirmedOwner {
 
     function getRequestStatus(
         uint256 _requestId
-    ) external view returns (bool fulfilled, uint256[] memory randomWords) {
+    ) external view returns (bool fulfilled, uint64 randomValue) {
         require(s_requests[_requestId].exists, "request not found");
         RequestStatus memory request = s_requests[_requestId];
-        return (request.fulfilled, request.randomWords);
+        fulfilled = request.fulfilled;
+        if(fulfilled) {
+          randomValue = uint64(request.randomWords[0]);
+        }
     }
 }
 
