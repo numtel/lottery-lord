@@ -1,4 +1,4 @@
-# Lottery Lord
+# Lotto Launcha
 
 Generate lottery NFTs to support any cause or no cause, it's up to you!
 
