@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 
 import "../contracts/LotteryERC721.sol";
+import "../contracts/RandomSource.sol";
 
 contract Deploy is Script {
   function run() external {
@@ -14,7 +15,8 @@ contract Deploy is Script {
     string memory symbol = vm.envString("COLLECTION_SYMBOL");
     address randomSource = vm.envAddress("RANDOM_SOURCE");
 
-    new LotteryERC721(name, symbol, IRandom(randomSource));
+    LotteryERC721 collection = new LotteryERC721(name, symbol, IRandom(randomSource));
+    RandomSource(randomSource).transferOwnership(address(collection));
 
     vm.stopBroadcast();
   }

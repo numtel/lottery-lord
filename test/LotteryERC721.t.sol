@@ -12,6 +12,8 @@ contract LotteryERC721Test is ILotteryERC721, Test {
     DummyERC20 public payToken;
     MockRandom public randomSource;
 
+    uint32 constant public callbackGasLimit = 100000;
+
     function setUp() public {
       randomSource = new MockRandom();
       collection = new LotteryERC721("Test", "TEST", randomSource);
@@ -22,7 +24,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](2);
       shares[0].recipient = address(0);
       shares[0].share = 0xcccccccccccccccc;
-      shares[1].recipient = address(1);
+      shares[1].recipient = address(1000);
       shares[1].share = 0x3333333333333333;
 
       uint256 ticketPrice = 1000;
@@ -45,26 +47,26 @@ contract LotteryERC721Test is ILotteryERC721, Test {
 
       // Not yet ended
       vm.expectRevert();
-      collection.beginProcessLottery(tokenId);
+      collection.beginProcessLottery(tokenId, callbackGasLimit);
 
       // Not yet begun
       vm.expectRevert();
       collection.finishProcessLottery(tokenId);
 
       vm.warp(block.timestamp + duration + 3);
-      collection.beginProcessLottery(tokenId);
+      collection.beginProcessLottery(tokenId, callbackGasLimit);
 
       // Not yet fulfilled
       vm.expectRevert();
       collection.finishProcessLottery(tokenId);
 
-      randomSource.pushValue(0x7777777777777777);
+      randomSource.pushValue(1, 0x7777777777777777);
       vm.expectEmit();
-      emit ILotteryERC721.LotteryEnded(tokenId, address(this));
+      emit ILotteryERC721.LotteryEnded(tokenId);
       collection.finishProcessLottery(tokenId);
 
       assertEq(payToken.balanceOf(address(this)), ticketPrice * sharesToBuy1 * 4/5);
-      assertEq(payToken.balanceOf(address(1)), ticketPrice * sharesToBuy1 * 1/5);
+      assertEq(payToken.balanceOf(address(1000)), ticketPrice * sharesToBuy1 * 1/5);
       assertEq(payToken.balanceOf(address(collection)), 0);
     }
 
@@ -74,7 +76,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](2);
       shares[0].recipient = address(0);
       shares[0].share = 0xffffffffffffffff - shareToCause;
-      shares[1].recipient = address(1);
+      shares[1].recipient = address(1000);
       shares[1].share = shareToCause;
 
       uint256 ticketPrice = 1000;
@@ -105,9 +107,9 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       }
 
       vm.warp(block.timestamp + duration + 3);
-      collection.beginProcessLottery(tokenId);
+      collection.beginProcessLottery(tokenId, callbackGasLimit);
 
-      randomSource.pushValue(randomValue);
+      randomSource.pushValue(1, randomValue);
       collection.finishProcessLottery(tokenId);
       uint256 winner = (randomValue * totalSharesBought / 0xffffffffffffffff);
 
@@ -122,7 +124,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
         }
         curPos += sharesToBuy[i];
       }
-      assertEq(payToken.balanceOf(address(1)), ticketPrice * totalSharesBought * shareToCause / 0xffffffffffffffff);
+      assertEq(payToken.balanceOf(address(1000)), ticketPrice * totalSharesBought * shareToCause / 0xffffffffffffffff);
       // XXX Rounding error acceptable?
       assertEq(payToken.balanceOf(address(collection)) <= 1, true);
     }
@@ -165,13 +167,109 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       vm.stopPrank();
 
       vm.warp(block.timestamp + duration + 3);
-      collection.beginProcessLottery(tokenId);
+      collection.beginProcessLottery(tokenId, callbackGasLimit);
 
-      randomSource.pushValue(0x7777777777777777);
+      randomSource.pushValue(1, 0x7777777777777777);
       collection.finishProcessLottery(tokenId);
 
       assertEq(payToken.balanceOf(address(this)), ticketPrice * minimumPurchase);
       assertEq(payToken.balanceOf(address(collection)), 0);
+    }
+
+    function testFourWinners() public {
+      ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](4);
+      shares[0].recipient = address(0);
+      shares[0].share = 0x1111111111111111;
+      shares[1].recipient = address(1);
+      shares[1].share = 0x2222222222222222;
+      shares[2].recipient = address(2);
+      shares[2].share = 0x3333333333333333;
+      shares[3].recipient = address(3);
+      shares[3].share = 0x9999999999999999;
+
+      uint256 ticketPrice = 1000;
+      uint256 duration = 100;
+
+      ILotteryERC721.LotteryConfig memory config = ILotteryERC721.LotteryConfig(
+        'Test Lottery', 'Winner take all?', shares, ticketPrice, address(payToken),
+        block.timestamp + duration, address(0)
+      );
+
+      uint256 tokenId = collection.mint(config);
+
+      uint160 addressOffset = 1000;
+      uint256 sharesToBuy1 = 10000;
+      for(uint160 i = 0; i < shares.length; i++) {
+        vm.startPrank(address(addressOffset + i));
+        payToken.mint(ticketPrice * sharesToBuy1);
+        payToken.approve(address(collection), ticketPrice * sharesToBuy1);
+        collection.buyTickets(tokenId, sharesToBuy1);
+        vm.stopPrank();
+      }
+
+      vm.warp(block.timestamp + duration + 3);
+      collection.beginProcessLottery(tokenId, callbackGasLimit);
+      randomSource.pushValue(1, 0xffffffffffffffff999999999999999966666666666666660000000000000000);
+      collection.finishProcessLottery(tokenId);
+
+      assertEq(collection.lotteryRecipients(tokenId, 0), address(addressOffset));
+      assertEq(collection.lotteryRecipients(tokenId, 1), address(addressOffset + 1));
+      assertEq(collection.lotteryRecipients(tokenId, 2), address(addressOffset + 2));
+      assertEq(collection.lotteryRecipients(tokenId, 3), address(addressOffset + 3));
+      uint256 totalPot = ticketPrice * sharesToBuy1 * shares.length;
+      for(uint160 i = 0; i < shares.length; i++) {
+        assertEq(collection.lotteryRecipientAmounts(tokenId, i), totalPot * shares[i].share / 0xffffffffffffffff);
+      }
+    }
+
+    function testFiveWinners() public {
+      ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](5);
+      shares[0].recipient = address(0);
+      shares[0].share = 0x1111111111111111;
+      shares[1].recipient = address(1);
+      shares[1].share = 0x2222222222222222;
+      shares[2].recipient = address(2);
+      shares[2].share = 0x3333333333333333;
+      shares[3].recipient = address(3);
+      shares[3].share = 0x4444444444444444;
+      shares[4].recipient = address(4);
+      shares[4].share = 0x5555555555555555;
+
+      uint256 ticketPrice = 1000;
+      uint256 duration = 100;
+
+      ILotteryERC721.LotteryConfig memory config = ILotteryERC721.LotteryConfig(
+        'Test Lottery', 'Winner take all?', shares, ticketPrice, address(payToken),
+        block.timestamp + duration, address(0)
+      );
+
+      uint256 tokenId = collection.mint(config);
+
+      uint160 addressOffset = 1000;
+      uint256 sharesToBuy1 = 10000;
+      for(uint160 i = 0; i < shares.length; i++) {
+        vm.startPrank(address(addressOffset + i));
+        payToken.mint(ticketPrice * sharesToBuy1);
+        payToken.approve(address(collection), ticketPrice * sharesToBuy1);
+        collection.buyTickets(tokenId, sharesToBuy1);
+        vm.stopPrank();
+      }
+
+      vm.warp(block.timestamp + duration + 3);
+      collection.beginProcessLottery(tokenId, callbackGasLimit);
+      randomSource.pushValue(1, 0xffffffffffffffff999999999999999966666666666666660000000000000000);
+      randomSource.pushValue(1, 0x0000000000000000);
+      collection.finishProcessLottery(tokenId);
+
+      assertEq(collection.lotteryRecipients(tokenId, 0), address(addressOffset));
+      assertEq(collection.lotteryRecipients(tokenId, 1), address(addressOffset + 1));
+      assertEq(collection.lotteryRecipients(tokenId, 2), address(addressOffset + 2));
+      assertEq(collection.lotteryRecipients(tokenId, 3), address(addressOffset + 4));
+      assertEq(collection.lotteryRecipients(tokenId, 4), address(addressOffset));
+      uint256 totalPot = ticketPrice * sharesToBuy1 * shares.length;
+      for(uint160 i = 0; i < shares.length; i++) {
+        assertEq(collection.lotteryRecipientAmounts(tokenId, i), totalPot * shares[i].share / 0xffffffffffffffff);
+      }
     }
 }
 

@@ -20,6 +20,8 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   mapping(uint256 => address[]) public ticketBuyers;
   mapping(uint256 => uint8) public lotteryStatus;
   mapping(uint256 => uint256) public lotteryRandomRequests;
+  mapping(uint256 => address[]) public lotteryRecipients;
+  mapping(uint256 => uint256[]) public lotteryRecipientAmounts;
 
   IRandom public randomSource;
 
@@ -44,10 +46,29 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
     uint256 newTokenId = ++tokenCount;
     _mint(msg.sender, newTokenId);
     configs[newTokenId] = newConfig;
+    uint64 shareTotal;
+    for(uint256 i = 0; i < newConfig.shares.length; i++) {
+      shareTotal += newConfig.shares[i].share;
+    }
+    require(shareTotal == 0xffffffffffffffff);
     return newTokenId;
   }
 
-  function beginProcessLottery(uint256 tokenId) external {
+  function numberOfWinners(uint256 tokenId) public view returns (uint256, uint32) {
+    uint256 count;
+    for(uint i = 0; i < configs[tokenId].shares.length; i++) {
+      address shareRecipient = configs[tokenId].shares[i].recipient;
+      // Winners are denoted by addresses that are very low numbered
+      if(uint160(shareRecipient) < 100) {
+        count++;
+      }
+    }
+    uint32 numWords = uint32(count / 4);
+    if(count % 4 > 0) numWords++;
+    return (count, numWords);
+  }
+
+  function beginProcessLottery(uint256 tokenId, uint32 callbackGasLimit) external {
     _requireOwned(tokenId);
     require(configs[tokenId].endTime < block.timestamp, "Lottery Not Yet Ended");
     require(ticketsSold[tokenId] > 0);
@@ -55,41 +76,46 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
     lotteryStatus[tokenId] = 1;
     require(lotteryRandomRequests[tokenId] == 0);
 
-    lotteryRandomRequests[tokenId] = randomSource.requestRandomUint64();
+    (, uint32 numWords) = numberOfWinners(tokenId);
+
+    lotteryRandomRequests[tokenId] = randomSource.requestRandomWords(numWords, callbackGasLimit);
   }
 
   function finishProcessLottery(uint256 tokenId) external {
     _requireOwned(tokenId);
     require(lotteryStatus[tokenId] == 1);
+
+    emit LotteryEnded(tokenId);
     lotteryStatus[tokenId] = 2;
 
-    (bool fulfilled, uint64 randomValue) = randomSource.getRequestStatus(lotteryRandomRequests[tokenId]);
-
+    (bool fulfilled, uint256[] memory randomWords) = randomSource.getRequestStatus(lotteryRandomRequests[tokenId]);
     require(fulfilled);
 
-    uint256 winningTicket = ticketsSold[tokenId] * randomValue / 0xffffffffffffffff;
-
-    uint256 curPos;
-    address winner;
-    for(uint i = 0; i < ticketPurchases[tokenId].length; i++) {
-      curPos += ticketPurchases[tokenId][i].count;
-      if(curPos >= winningTicket) {
-        winner = ticketPurchases[tokenId][i].buyer;
-        break;
-      }
-    }
-    require(winner != address(0));
-    emit LotteryEnded(tokenId, winner);
-
-    for(uint i = 0; i < configs[tokenId].shares.length; i++) {
+    uint256 curWinnerIndex;
+    for(uint256 i = 0; i < configs[tokenId].shares.length; i++) {
       address shareRecipient = configs[tokenId].shares[i].recipient;
       uint256 shareAmount =
         (configs[tokenId].shares[i].share *
           ticketsSold[tokenId] *
           configs[tokenId].ticketAmount)
         / 0xffffffffffffffff;
-      // TODO allow more than one winner?
-      if(shareRecipient == address(0)) shareRecipient = winner;
+
+      if(uint160(shareRecipient) < 100) {
+        uint256 randomValue = uint64(randomWords[curWinnerIndex / 4] >> (64 * (curWinnerIndex % 4)));
+        curWinnerIndex++;
+        uint256 winningTicket = ticketsSold[tokenId] * randomValue / 0xffffffffffffffff;
+
+        uint256 curPos;
+        for(uint256 j = 0; j < ticketPurchases[tokenId].length; j++) {
+          curPos += ticketPurchases[tokenId][j].count;
+          if(curPos >= winningTicket) {
+            shareRecipient = ticketPurchases[tokenId][j].buyer;
+            break;
+          }
+        }
+      }
+      lotteryRecipients[tokenId].push(shareRecipient);
+      lotteryRecipientAmounts[tokenId].push(shareAmount);
       IERC20(configs[tokenId].ticketToken).transfer(shareRecipient, shareAmount);
     }
 

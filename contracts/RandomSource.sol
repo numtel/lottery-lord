@@ -3,10 +3,10 @@ pragma solidity ^0.8.20;
 
 import "chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
 import "chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
-import "chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./IRandom.sol";
 
-contract RandomSource is IRandom, VRFConsumerBaseV2, ConfirmedOwner {
+contract RandomSource is IRandom, VRFConsumerBaseV2, Ownable {
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
 
@@ -28,19 +28,8 @@ contract RandomSource is IRandom, VRFConsumerBaseV2, ConfirmedOwner {
 
     bytes32 keyHash;
 
-    // Depends on the number of requested values that you want sent to the
-    // fulfillRandomWords() function. Storing each word costs about 20,000 gas,
-    // so 100,000 is a safe default for this example contract. Test and adjust
-    // this limit based on the network that you select, the size of the request,
-    // and the processing of the callback request in the fulfillRandomWords()
-    // function.
-    uint32 callbackGasLimit = 100000;
-
     // The default is 3, but you can set this higher.
     uint16 requestConfirmations = 3;
-
-    // Cannot exceed VRFCoordinatorV2.MAX_NUM_WORDS.
-    uint32 numWords = 1;
 
     constructor(
         uint64 subscriptionId,
@@ -51,7 +40,7 @@ contract RandomSource is IRandom, VRFConsumerBaseV2, ConfirmedOwner {
         bytes32 _keyHash
     )
         VRFConsumerBaseV2(_coordinator)
-        ConfirmedOwner(msg.sender)
+        Ownable(msg.sender)
     {
         COORDINATOR = VRFCoordinatorV2Interface(_coordinator);
         s_subscriptionId = subscriptionId;
@@ -59,7 +48,15 @@ contract RandomSource is IRandom, VRFConsumerBaseV2, ConfirmedOwner {
     }
 
     // Assumes the subscription is funded sufficiently.
-    function requestRandomUint64()
+    // numWords cannot exceed VRFCoordinatorV2.MAX_NUM_WORDS.
+    // callbackGasLimit depends on the number of requested values that you want
+    // sent to the
+    // fulfillRandomWords() function. Storing each word costs about 20,000 gas,
+    // so 100,000 is a safe default for this example contract. Test and adjust
+    // this limit based on the network that you select, the size of the request,
+    // and the processing of the callback request in the fulfillRandomWords()
+    // function.
+    function requestRandomWords(uint32 numWords, uint32 callbackGasLimit)
         external
         onlyOwner
         returns (uint256 requestId)
@@ -95,13 +92,10 @@ contract RandomSource is IRandom, VRFConsumerBaseV2, ConfirmedOwner {
 
     function getRequestStatus(
         uint256 _requestId
-    ) external view returns (bool fulfilled, uint64 randomValue) {
+    ) external view returns (bool fulfilled, uint256[] memory randomWords) {
         require(s_requests[_requestId].exists, "request not found");
         RequestStatus memory request = s_requests[_requestId];
-        fulfilled = request.fulfilled;
-        if(fulfilled) {
-          randomValue = uint64(request.randomWords[0]);
-        }
+        return (request.fulfilled, request.randomWords);
     }
 }
 
