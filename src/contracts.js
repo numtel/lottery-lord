@@ -17,5 +17,5 @@ export const byChain = {
 
 export function chainContracts(chain) {
   if(chain && (chain.id in byChain || chain in byChain)) return byChain[chain.id || chain];
-  throw new Error('INVALID_CHAIN');
+  return null;
 }
