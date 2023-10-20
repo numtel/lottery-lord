@@ -8,7 +8,7 @@ export const byChain = {
     explorer: 'https://mumbai.polygonscan.com/',
     nativeCurrency: 'tMATIC',
     LotteryERC721: {
-      address: '0x2c35714c1df8069856e41e7b75b2270929b6459c',
+      address: '0x5a1338979f147c7bcfde6012f4e778461ef34d02',
       abi: lotteryERC721ABI,
       chainId: 80001,
     },
