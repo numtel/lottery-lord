@@ -9,6 +9,7 @@ import { publicProvider } from 'wagmi/providers/public';
 
 import { Router } from './Router.js';
 import '@rainbow-me/rainbowkit/styles.css';
+import './styles.css';
 
 
 const { chains, publicClient } = configureChains(

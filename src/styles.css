@@ -1,1 +1,4 @@
 body { background:#ccc; }
+
+#share-config {display:flex;}
+#share-config .pie-chart {max-width: 200px;}
