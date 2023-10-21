@@ -1,11 +1,12 @@
 import React, {useState} from 'react';
-import { usePublicClient, useNetwork, useContractWrite, useWaitForTransaction } from 'wagmi';
+import { usePublicClient, useNetwork, useContractWrite, useWaitForTransaction, erc20ABI } from 'wagmi';
 import { useNavigate } from 'react-router-dom';
-import { decodeEventLog, isAddress } from 'viem';
+import { decodeEventLog, isAddress, encodeFunctionData, parseUnits } from 'viem';
 import { normalize } from 'viem/ens';
 import { chainContracts} from '../contracts.js';
 import PieChart from './PieChart.js';
 import { DisplayAddress } from './DisplayAddress.js';
+import { TokenDetails } from './TokenDetails.js';
 
 const F16 = 0xffffffffffffffff;
 
@@ -13,9 +14,12 @@ export function MintNew() {
   const { chain } = useNetwork();
   const contracts = chainContracts(chain.id);
   const navigate = useNavigate();
-  const publicClient = usePublicClient({ chainId: 1 });
+  const publicClientEth = usePublicClient({ chainId: 1 });
+  const publicClient = usePublicClient();
   const [shares, setShares] = useState([[ 0, F16 ]]);
   const [shareErrors, setShareErrors] = useState([]);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [tokenAddr, setTokenAddr] = useState();
   const submitReply = async (event) => {
     event.preventDefault();
     const newErrors = [];
@@ -25,7 +29,7 @@ export function MintNew() {
       } else if(isAddress(shares[i][0])) {
         // Ok
       } else if(String(shares[i][0]).toLowerCase().endsWith('.eth')) {
-        const ensAddress = await publicClient.getEnsAddress({
+        const ensAddress = await publicClientEth.getEnsAddress({
           name: normalize(shares[i][0]),
         });
         if(!ensAddress) {
@@ -36,16 +40,50 @@ export function MintNew() {
       }
     }
     setShareErrors(newErrors);
-    if(newErrors.length) return;
+
+    const newFieldErrors = {};
+    let actualTokenAmount;
+    const decimalsCalldata = encodeFunctionData({
+      abi: erc20ABI,
+      functionName: 'decimals',
+    });
+    if(!isAddress(tokenAddr)) {
+      newFieldErrors.tokenAddr = 'Invalid address!';
+    } else {
+      const decimals = await publicClient.call({
+        data: decimalsCalldata,
+        to: tokenAddr,
+      });
+      if(!decimals.data) {
+        newFieldErrors.tokenAddr = 'Invalid ERC20 contract!';
+      } else {
+        if(!event.target.ticketPrice.value || isNaN(event.target.ticketPrice.value) || Number(event.target.ticketPrice.value) === 0) {
+          newFieldErrors.ticketPrice = 'Invalid amount!';
+        } else {
+          try {
+            actualTokenAmount = parseUnits(event.target.ticketPrice.value, Number(decimals.data));
+          } catch(error) {
+            newFieldErrors.ticketPrice = 'Invalid amount!';
+          }
+        }
+      }
+    }
+
+    setFieldErrors(newFieldErrors);
+
+    if(newErrors.length || Object.keys(newFieldErrors).length) return;
+    // TODO make it submit!
+    console.log(shares, actualTokenAmount, tokenAddr);
     return;
     write({
       args: [ [
         event.target.lotteryName.value,
         event.target.description.value,
         [],
-        event.target.ticketPrice.value,
-        event.target.token.value,
+        actualTokenAmount,
+        tokenAddr,
         event.target.endTime.value,
+        // TODO add option to require coinpassport, 1 ticket per person
         '0x0'
       ]],
     });
@@ -137,11 +175,14 @@ export function MintNew() {
         <legend>Ticket Configuration</legend>
         <div className="field">
           <label>Token:</label>
-          <input name="token" />
+          <input name="token" onChange={(e) => setTokenAddr(e.target.value)} />
+          {isAddress(tokenAddr) && (<TokenDetails address={tokenAddr} {...{contracts}} />)}
+          {'tokenAddr' in fieldErrors && (<span className="error">{fieldErrors.tokenAddr}</span>)}
         </div>
         <div className="field">
           <label>Ticket Price:</label>
           <input name="ticketPrice" />
+          {'ticketPrice' in fieldErrors && (<span className="error">{fieldErrors.ticketPrice}</span>)}
         </div>
       </fieldset>
       <fieldset>
@@ -171,6 +212,7 @@ export function MintNew() {
         </div>
       </fieldset>
       <button type="submit">Submit</button>
+      {!!(shareErrors.length || Object.keys(fieldErrors).length) && <span className="error">Fix input errors!</span>}
       {isLoading && <p>Waiting for user confirmation...</p>}
       {isSuccess && (
         txIsError ? (<p>Transaction error!</p>)

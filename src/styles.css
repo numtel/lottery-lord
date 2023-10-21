@@ -1,4 +1,6 @@
-body { background:#ccc; }
+body { background:#ccc; font-family: sans-serif; }
 
 #share-config {display:flex;}
 #share-config .pie-chart {max-width: 200px;}
+
+span.error { color: #900; display:block; }
