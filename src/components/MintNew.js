@@ -12,7 +12,7 @@ const F16 = 0xffffffffffffffff;
 
 export function MintNew() {
   const { chain } = useNetwork();
-  const contracts = chainContracts(chain.id);
+  const contracts = chainContracts(chain?.id);
   const navigate = useNavigate();
   const publicClientEth = usePublicClient({ chainId: 1 });
   const publicClient = usePublicClient();
@@ -151,6 +151,7 @@ export function MintNew() {
       return newShares;
     });
   };
+  if(!chain) return;
   if(!contracts) {
     return (<p>Chain Not Supported!</p>);
   }
@@ -168,16 +169,22 @@ export function MintNew() {
         </div>
         <div className="field">
           <label>End Time:</label>
-          <input name="endTime" />
+          <input name="endTimeDate" type="date" />
+          <input name="endTimeTime" type="time" />
         </div>
       </fieldset>
       <fieldset>
         <legend>Ticket Configuration</legend>
         <div className="field">
           <label>Token:</label>
-          <input name="token" onChange={(e) => setTokenAddr(e.target.value)} />
+          <input name="token" value={tokenAddr} onChange={(e) => setTokenAddr(e.target.value)} />
           {isAddress(tokenAddr) && (<TokenDetails address={tokenAddr} {...{contracts}} />)}
           {'tokenAddr' in fieldErrors && (<span className="error">{fieldErrors.tokenAddr}</span>)}
+          <div className="common-tokens">
+            {Object.keys(contracts.commonTokens).map(key => (
+              <button key={key} type="button" onClick={(e) => setTokenAddr(contracts.commonTokens[key])}>{key}</button>
+            ))}
+          </div>
         </div>
         <div className="field">
           <label>Ticket Price:</label>
