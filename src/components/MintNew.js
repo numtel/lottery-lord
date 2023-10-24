@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import { usePublicClient, useWalletClient, useAccount, useNetwork, useWaitForTransaction, erc20ABI } from 'wagmi';
+import { usePublicClient, useContractWrite, useNetwork, useWaitForTransaction, erc20ABI } from 'wagmi';
 import { useNavigate } from 'react-router-dom';
 import { decodeEventLog, isAddress, encodeFunctionData, parseUnits, pad } from 'viem';
 import { normalize } from 'viem/ens';
@@ -8,22 +8,22 @@ import PieChart from './PieChart.js';
 import { DisplayAddress } from './DisplayAddress.js';
 import { TokenDetails } from './TokenDetails.js';
 
-const F16 = 0xffffffffffffffff;
+const BigInt = window.BigInt;
+
+const F16n = 0xffffffffffffffffn;
 const ZERO_ADDR = pad('0x0', {size:20});
 
 export function MintNew() {
   const { chain } = useNetwork();
-  const { address: account } = useAccount();
   const contracts = chainContracts(chain?.id);
   const navigate = useNavigate();
   const publicClientEth = usePublicClient({ chainId: 1 });
   const publicClient = usePublicClient();
-  const [shares, setShares] = useState([[ 0, F16 ]]);
+  const [shares, setShares] = useState([[ 0, F16n ]]);
   const [shareErrors, setShareErrors] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [tokenAddr, setTokenAddr] = useState();
   const [validator, setValidator] = useState(ZERO_ADDR);
-  const [txHash, setTxHash] = useState();
   const submitReply = async (event) => {
     event.preventDefault();
     const newErrors = [];
@@ -91,24 +91,16 @@ export function MintNew() {
       endTime: (new Date(event.target.endTimeDate.value + ' ' + event.target.endTimeTime.value)).getTime() / 1000,
       ticketValidator: event.target.querySelector('input[name="validator"]:checked').value,
     };
-    const encoded = encodeFunctionData({
-      ...contracts.LotteryERC721,
-      functionName: 'mint',
+    write({
       args: [ config ],
     });
-    console.log(config, encoded);
-    setTxHash(await walletClient.sendTransaction({
-      account,
-      to: contracts.LotteryERC721.address,
-      data: encoded,
-    }));
   };
-  const { data: walletClient, isLoading, isError, isSuccess, error } = useWalletClient({
-    chainId: chain?.id,
-    address: account,
+  const { data, isLoading, isError, isSuccess, write } = useContractWrite({
+    ...contracts?.LotteryERC721,
+    functionName: 'mint',
   });
   const { isError: txIsError, isLoading: txIsLoading, isSuccess: txIsSuccess } = useWaitForTransaction({
-    hash: txHash,
+    hash: data ? data.hash : null,
     async onSuccess(data) {
       const decoded = data.logs.filter(log =>
           log.address.toLowerCase() === contracts.LotteryERC721.address.toLowerCase())
@@ -124,31 +116,38 @@ export function MintNew() {
   const shareChanged = (index, newValue) => {
     setShares(shares => {
       const newShares = [...shares];
+      if(shares.length === 1) {
+        shares[0][1] = F16n;
+        return newShares;
+      }
       // adjust other shares to compensate
-      const diff = shares[index][1] - newValue;
-      let total = newValue;
+      const diff = shares[index][1] - BigInt(Number(newValue));
+      let total = BigInt(Number(newValue));
       for(let i = 0; i < shares.length; i++) {
-        newShares[i][1] += diff / (shares.length - 1);
-        if(newShares[i][1] < 0) newShares[i][1] = 0;
-        if(newShares[i][1] > F16) newShares[i][1] = F16;
+        newShares[i][1] += diff / BigInt(shares.length - 1);
+        if(newShares[i][1] < 0) newShares[i][1] = 0n;
+        if(newShares[i][1] > F16n) newShares[i][1] = F16n;
         if(i !== index) total += newShares[i][1];
       }
-      newShares[index][1] = newValue;
-      // make sure shares add up to F16
-      const totalDiffProportion = total / F16;
-      let sum = 0;
+      newShares[index][1] = BigInt(Number(newValue));
+      // make sure shares add up to F16n
+      const totalDiffProportion = total * 10000n / F16n;
+      let sum = 0n;
       for(let i = 0; i < shares.length; i++) {
-        newShares[i][1] /= totalDiffProportion;
+        newShares[i][1] = newShares[i][1] * 10000n / totalDiffProportion;
         sum += newShares[i][1];
-        // There can be an off-by-one error here
-        if(sum > F16) newShares[i][1] -= sum - F16;
+      }
+      // There can be an off-by-one error above
+      // The adjustment above isn't 100% exact, so adjust the last share
+      if(sum !== F16n) {
+        newShares[newShares.length -1][1] -= sum - F16n;
       }
 
       return newShares;
     });
   };
   const removeShare = (index) => {
-    shareChanged(index, 0);
+    shareChanged(index, '0');
     setShares(shares => {
       const newShares = [...shares];
       newShares.splice(index, 1);
@@ -159,7 +158,7 @@ export function MintNew() {
   const addShare = (event) => {
     setShares(shares => {
       const newShares = [...shares];
-      newShares.push([0, 0]);
+      newShares.push([0, 0n]);
       return newShares;
     });
   };
@@ -236,10 +235,10 @@ export function MintNew() {
           <div className="shares">
             {shares.map((share, index) => (
               <div className="share" key={index}>
-                {(share[1] / F16 * 100).toFixed(1)}% to&nbsp;
+                {(Number(((share[1] * 1000n) / F16n).toString(10))/10).toFixed(1)}% to&nbsp;
                 {share[0] === 0 ? 'random winner' : (<DisplayAddress value={share[0]} {...{contracts}} />)}
                 <div className="field">
-                  <input type="range" min="0" max={F16} value={share[1]} onChange={(e) => shareChanged(index, Number(e.target.value))} />
+                  <input type="range" min="0" max={F16n.toString(10)} value={share[1].toString(10)} onChange={(e) => shareChanged(index, e.target.value)} />
                 </div>
                 <div className="field">
                   <label>

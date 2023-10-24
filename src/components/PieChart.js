@@ -3,12 +3,12 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Pie } from 'react-chartjs-2';
 import { isAddress } from 'viem';
 
-const F16 = 0xffffffffffffffff;
+const F16n = 0xffffffffffffffffn;
 const PieChart = ({ data }) => {
   ChartJS.register(ArcElement, Tooltip, Legend);
   // Extract labels and percentages from the data
   const labels = data.map((item, index) => item[0] === 0 ? 'Random Winner' : isAddress(item[0]) ? item[0].slice(0, 6) + '...' + item[0].slice(-4) : item[0]);
-  const percentages = data.map(item => item[1] / F16 * 100);
+  const percentages = data.map(item => Number(item[1]) / Number(F16n));
 
   // Define the chart data
   const chartData = {
