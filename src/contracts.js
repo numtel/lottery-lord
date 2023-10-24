@@ -13,7 +13,7 @@ export const byChain = {
     validators: [
       {
         name: 'One Ticket Per Person',
-        description: 'Require buyers to be verified using Coinpassport and only allow each buyer to purchase a single ticket.',
+        description: 'Require buyers to be verified on Coinpassport.net and only allow each buyer to purchase a single ticket.',
         address: '0xB9DE28d814C68028178b4dB26cA47D2458535351',
       },
     ],

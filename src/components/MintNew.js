@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
-import { usePublicClient, useNetwork, useContractWrite, useWaitForTransaction, erc20ABI } from 'wagmi';
+import { usePublicClient, useWalletClient, useAccount, useNetwork, useWaitForTransaction, erc20ABI } from 'wagmi';
 import { useNavigate } from 'react-router-dom';
-import { decodeEventLog, isAddress, encodeFunctionData, parseUnits } from 'viem';
+import { decodeEventLog, isAddress, encodeFunctionData, parseUnits, pad } from 'viem';
 import { normalize } from 'viem/ens';
 import { chainContracts} from '../contracts.js';
 import PieChart from './PieChart.js';
@@ -9,9 +9,11 @@ import { DisplayAddress } from './DisplayAddress.js';
 import { TokenDetails } from './TokenDetails.js';
 
 const F16 = 0xffffffffffffffff;
+const ZERO_ADDR = pad('0x0', {size:20});
 
 export function MintNew() {
   const { chain } = useNetwork();
+  const { address: account } = useAccount();
   const contracts = chainContracts(chain?.id);
   const navigate = useNavigate();
   const publicClientEth = usePublicClient({ chainId: 1 });
@@ -20,12 +22,19 @@ export function MintNew() {
   const [shareErrors, setShareErrors] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [tokenAddr, setTokenAddr] = useState();
+  const [validator, setValidator] = useState(ZERO_ADDR);
+  const [txHash, setTxHash] = useState();
   const submitReply = async (event) => {
     event.preventDefault();
     const newErrors = [];
+    const sharesOut = [...shares.map(share => ({recipient:share[0], share:share[1]}))];
     for(let i = 0; i < shares.length; i++) {
       if(shares[i][0] === 0) {
         // Ok
+        sharesOut[i].recipient = pad(`0x${i}`, {size:20});
+        if(i > 99) {
+          newErrors[i] = 'Too many winners! Max: 100';
+        }
       } else if(isAddress(shares[i][0])) {
         // Ok
       } else if(String(shares[i][0]).toLowerCase().endsWith('.eth')) {
@@ -35,6 +44,7 @@ export function MintNew() {
         if(!ensAddress) {
           newErrors[i] = 'Invalid ENS Name';
         }
+        sharesOut[i].recipient = ensAddress;
       } else {
         newErrors[i] = 'Invalid Address';
       }
@@ -72,28 +82,33 @@ export function MintNew() {
     setFieldErrors(newFieldErrors);
 
     if(newErrors.length || Object.keys(newFieldErrors).length) return;
-    // TODO make it submit!
-    console.log(shares, actualTokenAmount, tokenAddr);
-    return;
-    write({
-      args: [ [
-        event.target.lotteryName.value,
-        event.target.description.value,
-        [],
-        actualTokenAmount,
-        tokenAddr,
-        event.target.endTime.value,
-        // TODO add option to require coinpassport, 1 ticket per person
-        '0x0'
-      ]],
+    const config = {
+      name: event.target.lotteryName.value,
+      description: event.target.description.value,
+      shares: sharesOut,
+      ticketAmount: actualTokenAmount,
+      ticketToken: tokenAddr,
+      endTime: (new Date(event.target.endTimeDate.value + ' ' + event.target.endTimeTime.value)).getTime() / 1000,
+      ticketValidator: event.target.querySelector('input[name="validator"]:checked').value,
+    };
+    const encoded = encodeFunctionData({
+      ...contracts.LotteryERC721,
+      functionName: 'mint',
+      args: [ config ],
     });
+    console.log(config, encoded);
+    setTxHash(await walletClient.sendTransaction({
+      account,
+      to: contracts.LotteryERC721.address,
+      data: encoded,
+    }));
   };
-  const { data, isLoading, isError, isSuccess, write } = useContractWrite({
-    ...contracts?.LotteryERC721,
-    functionName: 'mint',
+  const { data: walletClient, isLoading, isError, isSuccess, error } = useWalletClient({
+    chainId: chain?.id,
+    address: account,
   });
   const { isError: txIsError, isLoading: txIsLoading, isSuccess: txIsSuccess } = useWaitForTransaction({
-    hash: data ? data.hash : null,
+    hash: txHash,
     async onSuccess(data) {
       const decoded = data.logs.filter(log =>
           log.address.toLowerCase() === contracts.LotteryERC721.address.toLowerCase())
@@ -121,8 +136,12 @@ export function MintNew() {
       newShares[index][1] = newValue;
       // make sure shares add up to F16
       const totalDiffProportion = total / F16;
+      let sum = 0;
       for(let i = 0; i < shares.length; i++) {
         newShares[i][1] /= totalDiffProportion;
+        sum += newShares[i][1];
+        // There can be an off-by-one error here
+        if(sum > F16) newShares[i][1] -= sum - F16;
       }
 
       return newShares;
@@ -151,6 +170,9 @@ export function MintNew() {
       return newShares;
     });
   };
+  const setValidatorEx = (e) => {
+    setValidator(e.target.value);
+  }
   if(!chain) return;
   if(!contracts) {
     return (<p>Chain Not Supported!</p>);
@@ -190,6 +212,21 @@ export function MintNew() {
           <label>Ticket Price:</label>
           <input name="ticketPrice" />
           {'ticketPrice' in fieldErrors && (<span className="error">{fieldErrors.ticketPrice}</span>)}
+        </div>
+        <div className="field validators">
+          <label>
+            <input type="radio" checked={validator === ZERO_ADDR} onChange={setValidatorEx} name="validator" value={ZERO_ADDR} />
+            <span className="name">Unrestricted ticket purchasing</span>
+            <span className="description">Any account can buy any number of tickets.</span>
+          </label>
+
+          {contracts.validators.map(thisValidator => (
+            <label>
+              <input type="radio" name="validator" checked={validator === thisValidator.address} onChange={setValidatorEx} value={thisValidator.address} />
+              <span className="name">{thisValidator.name}</span>
+              <span className="description">{thisValidator.description}</span>
+            </label>
+          ))}
         </div>
       </fieldset>
       <fieldset>

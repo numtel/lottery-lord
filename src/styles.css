@@ -29,6 +29,11 @@ legend { display: block; background:#fff; }
 label { display:block; }
 textarea { font-family:san-serif; }
 input, textarea { width:calc(100% - 10px); }
+input[type="radio"] { width:auto; }
+
+.validators label { padding: 5px 0; margin: 5px 0; }
+.validators label:has(input:checked) { border: 1px solid #0008; background:#fff4; border-radius: 10px; }
+.validators .description { display:block; font-size:80%; padding:5px; }
 
 button { background:#eee; border:2px solid #fff; border-radius:16px; padding:8px; font-size:1rem; font-weight:bold; color:#222; cursor:pointer; }
 
