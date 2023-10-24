@@ -10,6 +10,13 @@ export const byChain = {
     commonTokens: {
       EXFEE: '0xa7d04e6cf8f9cb0a24a14369997048248080a61f',
     },
+    validators: [
+      {
+        name: 'One Ticket Per Person',
+        description: 'Require buyers to be verified using Coinpassport and only allow each buyer to purchase a single ticket.',
+        address: '0xB9DE28d814C68028178b4dB26cA47D2458535351',
+      },
+    ],
     LotteryERC721: {
       address: '0x5a1338979f147c7bcfde6012f4e778461ef34d02',
       abi: lotteryERC721ABI,

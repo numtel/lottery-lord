@@ -12,6 +12,10 @@ $ RUST_BACKTRACE=1 SUBSCRIPTION_ID=6187 COORDINATOR_ADDR=0x7a1BaC17Ccc5b313516C5
 
 # Deploy LotteryERC721
 $ RUST_BACKTRACE=1 COLLECTION_NAME="Lotto Test" COLLECTION_SYMBOL="LOTTOTEST" RANDOM_SOURCE=0x1234 forge script script/LotteryERC721.s.sol:Deploy --rpc-url https://rpc-mumbai.maticvigil.com/ --broadcast --legacy --verify -vvvv
+
+# Deploy OneTicketPerPerson validator using Mumbai deployed MockVerification
+$ RUST_BACKTRACE=1 VERIFICATIONS=0x31DE5D6E9675479a5f30C6389Bd43fc9b6f47fE9 forge script script/OneTicketPerPerson.s.sol:Deploy --rpc-url https://rpc-mumbai.maticvigil.com/ --broadcast --legacy --verify -vvvv
+
 ```
 
 ## License
