@@ -24,4 +24,6 @@ interface ILotteryERC721 {
 
   event TicketsBought(uint256 indexed tokenId, address indexed buyer, uint256 ticketCount);
   event LotteryEnded(uint256 indexed tokenId);
+
+  function ticketsBought(uint256 tokenId, address buyer) external view returns(uint256);
 }

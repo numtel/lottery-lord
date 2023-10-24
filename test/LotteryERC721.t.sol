@@ -4,10 +4,18 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../contracts/LotteryERC721.sol";
 import "../contracts/DummyERC20.sol";
+import "../contracts/OneTicketPerPerson.sol";
 import "./MockRandom.sol";
+import "./MockVerification.sol";
 import "./DummyTicketValidator.sol";
 
 contract LotteryERC721Test is ILotteryERC721, Test {
+  // XXX: Compiler crashes with strange error if this test contract doesn't
+  //  inherit the ILotteryERC721 interface. Seems to be something with the
+  //  event emission checks. Anyways, to make this contract match the
+  //  interface, this unused mapping is here
+  mapping(uint256 => mapping(address => uint256)) public ticketsBought;
+
     LotteryERC721 public collection;
     DummyERC20 public payToken;
     MockRandom public randomSource;
@@ -174,6 +182,46 @@ contract LotteryERC721Test is ILotteryERC721, Test {
 
       assertEq(payToken.balanceOf(address(this)), ticketPrice * minimumPurchase);
       assertEq(payToken.balanceOf(address(collection)), 0);
+    }
+
+    function testOneTicketPerPerson() public {
+      MockVerification verifications = new MockVerification();
+      OneTicketPerPerson validator = new OneTicketPerPerson(address(verifications));
+      ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](1);
+      shares[0].recipient = address(0);
+      shares[0].share = 0xffffffffffffffff;
+
+      uint256 ticketPrice = 1000;
+      uint256 duration = 100;
+
+      ILotteryERC721.LotteryConfig memory config = ILotteryERC721.LotteryConfig(
+        'Test Lottery', 'Winner take all?', shares, ticketPrice, address(payToken),
+        block.timestamp + duration, address(validator)
+      );
+
+      uint256 tokenId = collection.mint(config);
+
+      // Mint double the ticket price because we try buying 2 tickets,
+      //  even though it fails, it must fail for the other reason
+      payToken.mint(ticketPrice * 2);
+      payToken.approve(address(collection), ticketPrice * 2);
+
+      // Hasn't verified yet
+      vm.expectRevert();
+      collection.buyTickets(tokenId, 1);
+
+      verifications.setStatus(address(this), 0);
+
+      // Can't buy more than one
+      vm.expectRevert();
+      collection.buyTickets(tokenId, 2);
+
+      // This is the success
+      collection.buyTickets(tokenId, 1);
+
+      // Can't buy again
+      vm.expectRevert();
+      collection.buyTickets(tokenId, 1);
     }
 
     function testFourWinners() public {
