@@ -8,6 +8,7 @@ import PieChart from '../components/PieChart.js';
 import { DisplayAddress } from '../components/DisplayAddress.js';
 import { TokenDetails } from '../components/TokenDetails.js';
 import { Remaining } from '../components/Remaining.js';
+import { TicketVendor } from '../components/TicketVendor.js';
 
 const F16n = 0xffffffffffffffffn;
 
@@ -99,6 +100,11 @@ export function Lotto() {
       <dt>Lottery Status</dt>
       <dd><LotteryStatus {...{data}} /></dd>
     </dl>
+    {data[2].result === 0 ? Number(data[0].result[4]) * 1000 > Date.now() ?
+      (<TicketVendor {...{chainId, collection, tokenId, contracts}} config={data[0].result} />) :
+      (<button>Begin Processing</button>) :
+      data[2].result === 1 ?
+        (<button>Complete processing</button>) : null}
 
   </>);
 }
