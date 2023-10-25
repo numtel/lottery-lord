@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import Linkify from 'react-linkify';
 
 import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { configureChains, createConfig, WagmiConfig } from 'wagmi';
@@ -49,3 +50,8 @@ root.render(
   </React.StrictMode>
 );
 
+
+function LinkComponent(decoratedHref, decoratedText, key) {
+  return (<a href={decoratedHref} target="_blank" rel="noreferrer" key={key}>{decoratedText}</a>);
+}
+Linkify.defaultProps.componentDecorator = LinkComponent;

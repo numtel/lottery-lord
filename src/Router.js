@@ -15,7 +15,7 @@ export function Router() {
             element={<Home />}
           />
           <Route
-            path="lotto/:chainId/:tokenId"
+            path="lotto/:chainId/:collection/:tokenId"
             element={<Lotto />}
           />
           <Route

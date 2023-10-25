@@ -5,12 +5,14 @@ import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerabl
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4906.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC165.sol";
+import "openzeppelin-contracts/contracts/utils/Strings.sol";
 import "./IRandom.sol";
 import "./ITicketValidator.sol";
 import "./ILotteryERC721.sol";
 
 contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   uint256 public tokenCount;
+  string public urlPrefix;
 
   mapping(uint256 => LotteryConfig) public configs;
   mapping(uint256 => TicketPurchase[]) public ticketPurchases;
@@ -28,9 +30,11 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   constructor(
     string memory name,
     string memory symbol,
-    IRandom _randomSource
+    IRandom _randomSource,
+    string memory _urlPrefix
   ) ERC721(name, symbol) {
     randomSource = _randomSource;
+    urlPrefix = _urlPrefix;
   }
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable, IERC165) returns (bool) {
@@ -39,7 +43,7 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
 
   function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
     _requireOwned(tokenId);
-    return "hello";
+    return string(abi.encodePacked(urlPrefix, Strings.toHexString(address(this)), '/', Strings.toString(tokenId)));
   }
 
   function mint(LotteryConfig calldata newConfig) external returns (uint256) {
@@ -52,6 +56,10 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
     }
     require(shareTotal == 0xffffffffffffffff);
     return newTokenId;
+  }
+
+  function lotteryShares(uint256 tokenId) public view returns (PotShareEntry[] memory out) {
+    return configs[tokenId].shares;
   }
 
   function numberOfWinners(uint256 tokenId) public view returns (uint256, uint32) {

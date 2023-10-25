@@ -12,13 +12,18 @@ export const byChain = {
     },
     validators: [
       {
+        name: 'Unrestricted ticket purchasing',
+        description: 'Any account can buy any number of tickets.',
+        address: '0x0000000000000000000000000000000000000000',
+      },
+      {
         name: 'One Ticket Per Person',
         description: 'Require buyers to be verified on Coinpassport.net and only allow each buyer to purchase a single ticket.',
         address: '0xB9DE28d814C68028178b4dB26cA47D2458535351',
       },
     ],
     LotteryERC721: {
-      address: '0x5a1338979f147c7bcfde6012f4e778461ef34d02',
+      address: '0xf2bbbb9a0c2437898335228c6f96ed487feb5631',
       abi: lotteryERC721ABI,
       chainId: 80001,
     },

@@ -24,7 +24,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
 
     function setUp() public {
       randomSource = new MockRandom();
-      collection = new LotteryERC721("Test", "TEST", randomSource);
+      collection = new LotteryERC721("Test", "TEST", randomSource, "http://localhost/lottery/1337/");
       payToken = new DummyERC20("Test", "TEST");
     }
 

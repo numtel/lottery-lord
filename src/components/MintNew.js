@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import { usePublicClient, useContractWrite, useNetwork, useWaitForTransaction, erc20ABI } from 'wagmi';
 import { useNavigate } from 'react-router-dom';
+import Linkify from 'react-linkify';
 import { decodeEventLog, isAddress, encodeFunctionData, parseUnits, pad } from 'viem';
 import { normalize } from 'viem/ens';
 import { chainContracts} from '../contracts.js';
@@ -213,17 +214,11 @@ export function MintNew() {
           {'ticketPrice' in fieldErrors && (<span className="error">{fieldErrors.ticketPrice}</span>)}
         </div>
         <div className="field validators">
-          <label>
-            <input type="radio" checked={validator === ZERO_ADDR} onChange={setValidatorEx} name="validator" value={ZERO_ADDR} />
-            <span className="name">Unrestricted ticket purchasing</span>
-            <span className="description">Any account can buy any number of tickets.</span>
-          </label>
-
           {contracts.validators.map(thisValidator => (
             <label>
               <input type="radio" name="validator" checked={validator === thisValidator.address} onChange={setValidatorEx} value={thisValidator.address} />
               <span className="name">{thisValidator.name}</span>
-              <span className="description">{thisValidator.description}</span>
+              <span className="description"><Linkify>{thisValidator.description}</Linkify></span>
             </label>
           ))}
         </div>

@@ -1,5 +1,4 @@
-import { Link } from "react-router-dom";
-import { useEnsAddress } from 'wagmi';
+import { useEnsAddress, useEnsName } from 'wagmi';
 import { isAddress } from 'viem';
 
 export function DisplayAddress({ value, contracts }) {
@@ -7,6 +6,13 @@ export function DisplayAddress({ value, contracts }) {
     chainId: 1,
     name: String(value).toLowerCase().endsWith('.eth') ? value : null,
   });
+  const { data: dataName } = useEnsName({
+    chainId: 1,
+    address: isAddress(value) ? value : null,
+  });
+  if(dataName) return (
+    <a href={`${contracts.explorer}address/${value}`} target="_blank" rel="noreferrer">{ dataName }</a>
+  );
   if(isAddress(value)) return (
     <a href={`${contracts.explorer}address/${value}`} target="_blank" rel="noreferrer">{ value.slice(0, 6) + '...' + value.slice(-4) }</a>
   );

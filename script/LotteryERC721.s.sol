@@ -14,9 +14,12 @@ contract Deploy is Script {
     string memory name = vm.envString("COLLECTION_NAME");
     string memory symbol = vm.envString("COLLECTION_SYMBOL");
     address randomSource = vm.envAddress("RANDOM_SOURCE");
+    string memory urlPrefix = vm.envString("URL_PREFIX");
 
-    LotteryERC721 collection = new LotteryERC721(name, symbol, IRandom(randomSource));
-    RandomSource(randomSource).transferOwnership(address(collection));
+    LotteryERC721 collection = new LotteryERC721(name, symbol, IRandom(randomSource), urlPrefix);
+    if(RandomSource(randomSource).owner() == address(this)) {
+      RandomSource(randomSource).transferOwnership(address(collection));
+    }
 
     vm.stopBroadcast();
   }
