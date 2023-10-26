@@ -6,7 +6,7 @@ export function DisplayAddress({ value, contracts }) {
     chainId: 1,
     name: String(value).toLowerCase().endsWith('.eth') ? value : null,
   });
-  const { data: dataName } = useEnsName({
+  const { data: dataName, isError: dataError, isLoading: dataLoading } = useEnsName({
     chainId: 1,
     address: isAddress(value) ? value : null,
   });

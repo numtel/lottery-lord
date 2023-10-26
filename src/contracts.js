@@ -23,7 +23,7 @@ export const byChain = {
       },
     ],
     LotteryERC721: {
-      address: '0xf2bbbb9a0c2437898335228c6f96ed487feb5631',
+      address: '0xabd1c6b556981ce623f764871c3f91a470a615ba',
       abi: lotteryERC721ABI,
       chainId: 80001,
     },

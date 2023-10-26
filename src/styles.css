@@ -36,6 +36,8 @@ input[type="radio"] { width:auto; }
 .validators .description { display:block; font-size:80%; padding:5px; }
 
 button { background:#eee; border:2px solid #fff; border-radius:16px; padding:8px; font-size:1rem; font-weight:bold; color:#222; cursor:pointer; }
+button:hover { color:#000; background:#fff; }
+button:disabled { color:#666; background:#ccc; cursor: default; }
 
 #share-config {display:flex;}
 #share-config .pie-chart {max-width: 200px;}

@@ -23,8 +23,7 @@ const { chains, publicClient } = configureChains(
 
 const { connectors } = getDefaultWallets({
   appName: 'Lotto Launcha',
-  // TODO get walletconnect projectId
-  projectId: 'xxx',
+  projectId: 'cab9766bcaeb19d8b10cb26e4534b61e',
   chains
 });
 

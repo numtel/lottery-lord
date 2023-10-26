@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Linkify from 'react-linkify';
-import { useContractReads } from 'wagmi';
+import { useContractWrite, useWaitForTransaction, useContractReads, useAccount } from 'wagmi';
 import { isAddressEqual } from 'viem';
 import { chainContracts} from '../contracts.js';
 import PieChart from '../components/PieChart.js';
@@ -9,10 +9,12 @@ import { DisplayAddress } from '../components/DisplayAddress.js';
 import { TokenDetails } from '../components/TokenDetails.js';
 import { Remaining } from '../components/Remaining.js';
 import { TicketVendor } from '../components/TicketVendor.js';
+import RandomSourceABI from '../abi/RandomSource.json';
 
 const F16n = 0xffffffffffffffffn;
 
 export function Lotto() {
+  const { address: account } = useAccount();
   const { chainId, collection, tokenId } = useParams();
   const contracts = chainContracts(chainId);
   // TODO this could support multiple lottery contracts
@@ -21,32 +23,61 @@ export function Lotto() {
 
   const { data, isError, isLoading } = useContractReads({
     contracts: [
-      {
+      { // 0
         ...contracts.LotteryERC721,
         functionName: 'configs',
         args: [ tokenId ],
       },
-      {
+      { // 1
         ...contracts.LotteryERC721,
         functionName: 'ticketsSold',
         args: [ tokenId ],
       },
-      {
+      { // 2
         ...contracts.LotteryERC721,
         functionName: 'lotteryStatus',
         args: [ tokenId ],
       },
-      {
+      { // 3
         ...contracts.LotteryERC721,
         functionName: 'lotteryShares',
         args: [ tokenId ],
       },
-      {
+      { // 4
         ...contracts.LotteryERC721,
         functionName: 'numberOfWinners',
         args: [ tokenId ],
       },
+      { // 5
+        ...contracts.LotteryERC721,
+        functionName: 'ticketsBought',
+        args: [ tokenId, account ],
+      },
+      { // 6
+        ...contracts.LotteryERC721,
+        functionName: 'randomSource',
+        args: [],
+      },
     ],
+    watch: true,
+  });
+
+  const { data: beginData, isLoading: beginLoading, isError: beginError, isSuccess: beginSuccess, write: beginWrite } = useContractWrite({
+    ...contracts.LotteryERC721,
+    functionName: 'beginProcessLottery',
+    args: [ tokenId, data && data[4].result ? 100000 + (data[4].result[1] * 20000) : null ],
+  });
+  const { isError: beginTxError, isLoading: beginTxLoading, isSuccess: beginTxSuccess } = useWaitForTransaction({
+    hash: beginData ? beginData.hash : null,
+  });
+
+  const { data: endData, isLoading: endLoading, isError: endError, isSuccess: endSuccess, write: endWrite } = useContractWrite({
+    ...contracts.LotteryERC721,
+    functionName: 'finishProcessLottery',
+    args: [ tokenId ],
+  });
+  const { isError: endTxError, isLoading: endTxLoading, isSuccess: endTxSuccess } = useWaitForTransaction({
+    hash: endData ? endData.hash : null,
   });
 
   if(!isKnownLotto) {
@@ -57,7 +88,7 @@ export function Lotto() {
     return (<p>Loading lottery details...</p>);
   }
 
-  if(isError) {
+  if(isError || data[3].status === 'failure') {
     return (<p>Error loading lottery details!</p>);
   }
 
@@ -97,16 +128,114 @@ export function Lotto() {
       <dd>{data[4].result[0].toString()}</dd>
       <dt>Tickets Sold</dt>
       <dd>{data[1].result.toString()}</dd>
+      <dt>My Tickets Bought</dt>
+      <dd>{data[5].result.toString()}</dd>
       <dt>Lottery Status</dt>
       <dd><LotteryStatus {...{data}} /></dd>
     </dl>
     {data[2].result === 0 ? Number(data[0].result[4]) * 1000 > Date.now() ?
       (<TicketVendor {...{chainId, collection, tokenId, contracts}} config={data[0].result} />) :
-      (<button>Begin Processing</button>) :
+      (<>
+        <button onClick={() => beginWrite()} type="button">Begin Processing</button>
+        {beginLoading && <p>Waiting for user confirmation...</p>}
+        {beginSuccess && (
+          beginTxError ? (<p>Transaction error!</p>)
+          : beginTxLoading ? (<p>Waiting for transaction...</p>)
+          : beginTxSuccess ? (<p>Lottery Processing Initiated!</p>)
+          : (<p>Transaction sent...</p>))}
+        {beginTxError && <p>Error!</p>}
+      </>) :
       data[2].result === 1 ?
-        (<button>Complete processing</button>) : null}
+      (<>
+        <WaitForRandomFulfilled {...{chainId, tokenId, contracts}} randomSource={data[6].result}>
+          <button onClick={() => endWrite()} type="button">Finish Processing</button>
+          {endLoading && <p>Waiting for user confirmation...</p>}
+          {endSuccess && (
+            endTxError ? (<p>Transaction error!</p>)
+            : endTxLoading ? (<p>Waiting for transaction...</p>)
+            : endTxSuccess ? (<p>Lottery Processing Completed!</p>)
+            : (<p>Transaction sent...</p>))}
+          {endTxError && <p>Error!</p>}
+        </WaitForRandomFulfilled>
+      </>) : data[2].result === 2 ? (
+        <LotteryWinners config={data[0].result} shares={data[3].result} {...{chainId, tokenId, contracts}} />
+      ) : null}
+
 
   </>);
+}
+
+function LotteryWinners({ chainId, tokenId, contracts, shares, config }) {
+  const toLoad = [];
+  for(let i = 0; i < shares.length; i++) {
+    toLoad.push({
+      ...contracts.LotteryERC721,
+      functionName: 'lotteryRecipients',
+      args: [ tokenId, i ],
+    });
+    toLoad.push({
+      ...contracts.LotteryERC721,
+      functionName: 'lotteryRecipientAmounts',
+      args: [ tokenId, i ],
+    });
+  }
+  const { data, isError, isLoading } = useContractReads({
+    contracts: toLoad,
+  });
+  if(isLoading) {
+    return (<p>Loading lottery recipients...</p>);
+  }
+
+  if(isError) {
+    return (<p>Error loading lottery recipients!</p>);
+  }
+
+  const recipients = [];
+  for(let i = 0; i < shares.length; i++) {
+    recipients.push({ addr: data[2 * i].result, amount: data[2 * i + 1].result });
+  }
+  return (<ul className="recipients">
+    {recipients.map((recip, i) => (<li>
+      <DisplayAddress value={recip.addr} {...{contracts}} />
+      &nbsp;{isWinner(shares[i].recipient) ? 'won' : 'received'}&nbsp;
+      <TokenDetails {...{contracts}} address={config[3]} amount={recip.amount} />
+    </li>))}
+  </ul>);
+}
+
+function WaitForRandomFulfilled({ chainId, tokenId, contracts, randomSource, children }) {
+  const { data: reqData, isError: reqError, isLoading: reqLoading } = useContractReads({
+    contracts: [
+      { // 0
+        ...contracts.LotteryERC721,
+        functionName: 'lotteryRandomRequests',
+        args: [ tokenId ],
+      },
+    ],
+  });
+
+  const { data: randomData, isError: randomError, isLoading: randomLoading } = useContractReads({
+    contracts: [
+      { // 0
+        chainId: Number(chainId),
+        abi: RandomSourceABI,
+        address: randomSource,
+        functionName: 'getRequestStatus',
+        args: [ reqData ? reqData[0].result : null ],
+      },
+    ],
+    watch: true,
+  });
+
+  if(randomData && randomData[0] && randomData[0].result && randomData[0].result[0]) {
+    return (
+      <>{children}</>
+    );
+  } else {
+    return (
+      <p>Waiting for random fulfillment...</p>
+    );
+  }
 }
 
 function LotteryStatus({ data }) {
