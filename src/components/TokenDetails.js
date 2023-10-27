@@ -16,7 +16,7 @@ export function TokenDetails({ address, contracts, amount }) {
     <span>Invalid ERC20 Token!</span>
   );
   if(data) return (<>
-    {amount && formatUnits(amount, data[2].result)}&nbsp;
+    {amount !== undefined && formatUnits(amount, data[2].result)}&nbsp;
     <a href={`${contracts.explorer}address/${address}`} target="_blank" rel="noreferrer">{ data[0].result } ({data[1].result})</a>
   </>);
 }

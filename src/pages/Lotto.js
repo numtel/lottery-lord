@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Linkify from 'react-linkify';
-import { useContractWrite, useWaitForTransaction, useContractReads, useAccount } from 'wagmi';
+import { useContractWrite, useWaitForTransaction, useContractReads, useAccount, erc20ABI } from 'wagmi';
 import { isAddressEqual } from 'viem';
 import { chainContracts} from '../contracts.js';
 import PieChart from '../components/PieChart.js';
@@ -128,6 +128,8 @@ export function Lotto() {
       <dd>{data[4].result[0].toString()}</dd>
       <dt>Tickets Sold</dt>
       <dd>{data[1].result.toString()}</dd>
+      <dt>Pot Balance</dt>
+      <dd><PotBalance {...{chainId, tokenId, contracts}} config={data[0].result} /></dd>
       <dt>My Tickets Bought</dt>
       <dd>{data[5].result.toString()}</dd>
       <dt>Lottery Status</dt>
@@ -236,6 +238,33 @@ function WaitForRandomFulfilled({ chainId, tokenId, contracts, randomSource, chi
       <p>Waiting for random fulfillment...</p>
     );
   }
+}
+
+function PotBalance({ chainId, tokenId, contracts, config }) {
+  const { data, isError, isLoading } = useContractReads({
+    contracts: [
+      { // 0
+        abi: erc20ABI,
+        address: config[3],
+        chainId: Number(chainId),
+        functionName: 'balanceOf',
+        args: [ contracts.LotteryERC721.address ],
+      },
+    ],
+    watch: true,
+  });
+
+  if(isLoading) {
+    return (<p>Loading pot balance...</p>);
+  }
+
+  if(isError) {
+    return (<p>Error loading pot balance!</p>);
+  }
+
+  return (
+    <TokenDetails {...{contracts}} address={config[3]} amount={data[0].result} />
+  );
 }
 
 function LotteryStatus({ data }) {
