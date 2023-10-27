@@ -83,11 +83,11 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   function cancelLottery(uint256 tokenId) external {
     require(msg.sender == ownerOf(tokenId));
     require(lotteryStatus[tokenId] == 0);
-    lotteryStatus[tokenId] = 2;
+    lotteryStatus[tokenId] = 3;
   }
 
   function refundTickets(uint256 tokenId) external {
-    require(lotteryStatus[tokenId] == 2);
+    require(lotteryStatus[tokenId] == 3);
     require(refundClaimed[tokenId][msg.sender] == false);
     uint256 refundAmount = ticketsBought[tokenId][msg.sender] * configs[tokenId].ticketAmount;
     refundClaimed[tokenId][msg.sender] = true;

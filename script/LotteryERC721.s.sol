@@ -17,7 +17,7 @@ contract Deploy is Script {
     string memory urlPrefix = vm.envString("URL_PREFIX");
 
     LotteryERC721 collection = new LotteryERC721(name, symbol, IRandom(randomSource), urlPrefix);
-    if(RandomSource(randomSource).owner() == address(this)) {
+    if(RandomSource(randomSource).owner() == vm.addr(deployerPrivateKey)) {
       RandomSource(randomSource).transferOwnership(address(collection));
     }
 

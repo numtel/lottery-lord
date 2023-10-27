@@ -44,6 +44,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       );
 
       uint256 tokenId = collection.mint(config);
+      assertEq(collection.lotteryStatus(tokenId), 0);
 
       uint256 sharesToBuy1 = 10000;
       payToken.mint(ticketPrice * sharesToBuy1);
@@ -63,6 +64,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
 
       vm.warp(block.timestamp + duration + 3);
       collection.beginProcessLottery(tokenId, callbackGasLimit);
+      assertEq(collection.lotteryStatus(tokenId), 1);
 
       // Cannot cancel after begin processing
       vm.expectRevert();
@@ -80,6 +82,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       vm.expectEmit();
       emit ILotteryERC721.LotteryEnded(tokenId);
       collection.finishProcessLottery(tokenId);
+      assertEq(collection.lotteryStatus(tokenId), 2);
 
       assertEq(payToken.balanceOf(address(this)), ticketPrice * sharesToBuy1 * 4/5);
       assertEq(payToken.balanceOf(address(1000)), ticketPrice * sharesToBuy1 * 1/5);
@@ -360,6 +363,7 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       collection.cancelLottery(tokenId);
 
       collection.cancelLottery(tokenId);
+      assertEq(collection.lotteryStatus(tokenId), 3);
 
       collection.refundTickets(tokenId);
       assertEq(payToken.balanceOf(address(this)), ticketPrice * sharesToBuy1);

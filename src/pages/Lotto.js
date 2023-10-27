@@ -9,6 +9,7 @@ import { DisplayAddress } from '../components/DisplayAddress.js';
 import { TokenDetails } from '../components/TokenDetails.js';
 import { Remaining } from '../components/Remaining.js';
 import { TicketVendor } from '../components/TicketVendor.js';
+import { CancelLottery, RefundTickets }  from '../components/CancelLottery.js';
 import RandomSourceABI from '../abi/RandomSource.json';
 
 const F16n = 0xffffffffffffffffn;
@@ -58,6 +59,11 @@ export function Lotto() {
         functionName: 'randomSource',
         args: [],
       },
+      { // 7
+        ...contracts.LotteryERC721,
+        functionName: 'ownerOf',
+        args: [ tokenId ],
+      },
     ],
     watch: true,
   });
@@ -88,7 +94,7 @@ export function Lotto() {
     return (<p>Loading lottery details...</p>);
   }
 
-  if(isError || data[3].status === 'failure') {
+  if(isError || data[3].status === 'failure' || data[7].status === 'failure') {
     return (<p>Error loading lottery details!</p>);
   }
 
@@ -112,6 +118,8 @@ export function Lotto() {
         ))}
       </div>
     </div>
+    {isAddressEqual(account, data[7].result) && data[2].result === 0 &&
+      <CancelLottery {...{chainId, tokenId, contracts}} />}
     <dl>
       <dt>Ticket Price</dt>
       <dd><TokenDetails {...{contracts}} address={data[0].result[3]} amount={data[0].result[2]} /></dd>
@@ -143,7 +151,7 @@ export function Lotto() {
           : beginTxLoading ? (<p>Waiting for transaction...</p>)
           : beginTxSuccess ? (<p>Lottery Processing Initiated!</p>)
           : (<p>Transaction sent...</p>))}
-        {beginTxError && <p>Error!</p>}
+        {beginError && <p>Error!</p>}
       </>) :
       data[2].result === 1 ?
       (<>
@@ -155,10 +163,12 @@ export function Lotto() {
             : endTxLoading ? (<p>Waiting for transaction...</p>)
             : endTxSuccess ? (<p>Lottery Processing Completed!</p>)
             : (<p>Transaction sent...</p>))}
-          {endTxError && <p>Error!</p>}
+          {endError && <p>Error!</p>}
         </WaitForRandomFulfilled>
       </>) : data[2].result === 2 ? (
         <LotteryWinners config={data[0].result} shares={data[3].result} {...{chainId, tokenId, contracts}} />
+      ) : data[2].result === 3 ? (
+        <RefundTickets {...{chainId, tokenId, contracts}} qtyBought={data[5].result} />
       ) : null}
 
 
@@ -260,7 +270,8 @@ function LotteryStatus({ data }) {
         (<span>Ticket sales ended, awaiting processing...</span>) :
         data[2].result === 1 ?
           (<span>Processing begun, awaiting random values or final processing</span>) :
-          (<span>Lottery completed!</span>)}
+          data[2].result === 2 ? (<span>Lottery completed!</span>) :
+          data[2].result === 3 ? (<span>Lottery cancelled!</span>) : null}
   </>);
 }
 
