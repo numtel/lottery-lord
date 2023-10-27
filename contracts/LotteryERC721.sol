@@ -118,13 +118,12 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
     require(fulfilled);
 
     uint256 curWinnerIndex;
-    // Instead of ticketsSold * tickerPrice, use the balance so that
-    //  if someone wants to fill the pot without buying a ticket, it all works out
-    uint256 potBalance = IERC20(configs[tokenId].ticketToken).balanceOf(address(this));
     for(uint256 i = 0; i < configs[tokenId].shares.length; i++) {
       address shareRecipient = configs[tokenId].shares[i].recipient;
       uint256 shareAmount =
-        (configs[tokenId].shares[i].share * potBalance)
+        (configs[tokenId].shares[i].share *
+          ticketsSold[tokenId] *
+          configs[tokenId].ticketAmount)
         / 0xffffffffffffffff;
 
       if(uint160(shareRecipient) < maxWinners) {
