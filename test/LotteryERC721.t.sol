@@ -64,9 +64,17 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       vm.warp(block.timestamp + duration + 3);
       collection.beginProcessLottery(tokenId, callbackGasLimit);
 
+      // Cannot cancel after begin processing
+      vm.expectRevert();
+      collection.cancelLottery(tokenId);
+
       // Not yet fulfilled
       vm.expectRevert();
       collection.finishProcessLottery(tokenId);
+
+      // Cannot cancel after finishing processing
+      vm.expectRevert();
+      collection.cancelLottery(tokenId);
 
       randomSource.pushValue(1, 0x7777777777777777);
       vm.expectEmit();
@@ -318,6 +326,47 @@ contract LotteryERC721Test is ILotteryERC721, Test {
       for(uint160 i = 0; i < shares.length; i++) {
         assertEq(collection.lotteryRecipientAmounts(tokenId, i), totalPot * shares[i].share / 0xffffffffffffffff);
       }
+    }
+
+    function testRefund() public {
+      ILotteryERC721.PotShareEntry[] memory shares = new ILotteryERC721.PotShareEntry[](2);
+      shares[0].recipient = address(0);
+      shares[0].share = 0xffffffffffffffff;
+
+      uint256 ticketPrice = 1000;
+      uint256 duration = 100;
+
+      ILotteryERC721.LotteryConfig memory config = ILotteryERC721.LotteryConfig(
+        'Test Lottery', 'Winner take all?', shares, ticketPrice, address(payToken),
+        block.timestamp + duration, address(0)
+      );
+
+      uint256 tokenId = collection.mint(config);
+
+      uint256 sharesToBuy1 = 10000;
+      payToken.mint(ticketPrice * sharesToBuy1);
+      payToken.approve(address(collection), ticketPrice * sharesToBuy1);
+
+      collection.buyTickets(tokenId, sharesToBuy1);
+      assertEq(payToken.balanceOf(address(this)), 0);
+
+      // Cannot refund before canceling
+      vm.expectRevert();
+      collection.refundTickets(tokenId);
+
+      // Only owner can cancel
+      vm.prank(address(1));
+      vm.expectRevert();
+      collection.cancelLottery(tokenId);
+
+      collection.cancelLottery(tokenId);
+
+      collection.refundTickets(tokenId);
+      assertEq(payToken.balanceOf(address(this)), ticketPrice * sharesToBuy1);
+
+      // Cannot refund twice
+      vm.expectRevert();
+      collection.refundTickets(tokenId);
     }
 }
 

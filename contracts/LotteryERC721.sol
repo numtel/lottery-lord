@@ -14,6 +14,9 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   uint256 public tokenCount;
   string public urlPrefix;
 
+  // This is generally limited by the cost of getting random words from Chainlink
+  uint256 constant public maxWinners = 100;
+
   mapping(uint256 => LotteryConfig) public configs;
   mapping(uint256 => TicketPurchase[]) public ticketPurchases;
   mapping(uint256 => uint256) public ticketsSold;
@@ -24,6 +27,7 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   mapping(uint256 => uint256) public lotteryRandomRequests;
   mapping(uint256 => address[]) public lotteryRecipients;
   mapping(uint256 => uint256[]) public lotteryRecipientAmounts;
+  mapping(uint256 => mapping(address => bool)) public refundClaimed;
 
   IRandom public randomSource;
 
@@ -67,13 +71,27 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
     for(uint i = 0; i < configs[tokenId].shares.length; i++) {
       address shareRecipient = configs[tokenId].shares[i].recipient;
       // Winners are denoted by addresses that are very low numbered
-      if(uint160(shareRecipient) < 100) {
+      if(uint160(shareRecipient) < maxWinners) {
         count++;
       }
     }
     uint32 numWords = uint32(count / 4);
     if(count % 4 > 0) numWords++;
     return (count, numWords);
+  }
+
+  function cancelLottery(uint256 tokenId) external {
+    require(msg.sender == ownerOf(tokenId));
+    require(lotteryStatus[tokenId] == 0);
+    lotteryStatus[tokenId] = 2;
+  }
+
+  function refundTickets(uint256 tokenId) external {
+    require(lotteryStatus[tokenId] == 2);
+    require(refundClaimed[tokenId][msg.sender] == false);
+    uint256 refundAmount = ticketsBought[tokenId][msg.sender] * configs[tokenId].ticketAmount;
+    refundClaimed[tokenId][msg.sender] = true;
+    IERC20(configs[tokenId].ticketToken).transfer(msg.sender, refundAmount);
   }
 
   function beginProcessLottery(uint256 tokenId, uint32 callbackGasLimit) external {
@@ -100,15 +118,16 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
     require(fulfilled);
 
     uint256 curWinnerIndex;
+    // Instead of ticketsSold * tickerPrice, use the balance so that
+    //  if someone wants to fill the pot without buying a ticket, it all works out
+    uint256 potBalance = IERC20(configs[tokenId].ticketToken).balanceOf(address(this));
     for(uint256 i = 0; i < configs[tokenId].shares.length; i++) {
       address shareRecipient = configs[tokenId].shares[i].recipient;
       uint256 shareAmount =
-        (configs[tokenId].shares[i].share *
-          ticketsSold[tokenId] *
-          configs[tokenId].ticketAmount)
+        (configs[tokenId].shares[i].share * potBalance)
         / 0xffffffffffffffff;
 
-      if(uint160(shareRecipient) < 100) {
+      if(uint160(shareRecipient) < maxWinners) {
         uint256 randomValue = uint64(randomWords[curWinnerIndex / 4] >> (64 * (curWinnerIndex % 4)));
         curWinnerIndex++;
         uint256 winningTicket = ticketsSold[tokenId] * randomValue / 0xffffffffffffffff;
@@ -132,6 +151,7 @@ contract LotteryERC721 is ILotteryERC721, ERC721Enumerable, IERC4906 {
   function buyTickets(uint256 tokenId, uint256 ticketCount) external {
     emit TicketsBought(tokenId, msg.sender, ticketCount);
     _requireOwned(tokenId);
+    require(lotteryStatus[tokenId] == 0);
     require(configs[tokenId].endTime > block.timestamp, "Lottery Ended");
     require(ticketCount > 0);
     uint256 saleAmount = ticketCount * configs[tokenId].ticketAmount;
