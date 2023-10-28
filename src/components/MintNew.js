@@ -175,7 +175,7 @@ export function MintNew() {
   }
   if(!chain) return;
   if(!contracts) {
-    return (<p>Chain Not Supported!</p>);
+    return (<p className="form-status">Chain Not Supported!</p>);
   }
   return (
     <form onSubmit={submitReply}>
@@ -249,15 +249,16 @@ export function MintNew() {
           </div>
         </div>
       </fieldset>
-      <button type="submit">Submit</button>
-      {!!(shareErrors.length || Object.keys(fieldErrors).length) && <span className="error">Fix input errors!</span>}
-      {isLoading && <p>Waiting for user confirmation...</p>}
+      {!!(shareErrors.length || Object.keys(fieldErrors).length) ? <p className="form-status error">Fix input errors!</p> : (<>
+      {isLoading && <p className="form-status">Waiting for user confirmation...</p>}
       {isSuccess && (
-        txIsError ? (<p>Transaction error!</p>)
-        : txIsLoading ? (<p>Waiting for transaction...</p>)
-        : txIsSuccess ? (<p>Transaction success!</p>)
-        : (<p>Transaction sent...</p>))}
-      {isError && <p>Error!</p>}
+        txIsError ? (<p className="form-status error">Transaction error!</p>)
+        : txIsLoading ? (<p className="form-status">Waiting for transaction...</p>)
+        : txIsSuccess ? (<p className="form-status">Transaction success!</p>)
+        : (<p className="form-status">Transaction sent...</p>))}
+      {isError && <p className="form-status error">Error!</p>}
+      </>)}
+      <button type="submit">Launch New Lottery</button>
     </form>
   );
 }

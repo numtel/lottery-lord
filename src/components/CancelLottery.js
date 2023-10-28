@@ -10,14 +10,14 @@ export function CancelLottery({ chainId, tokenId, contracts }) {
     hash: data ? data.hash : null,
   });
   return (<>
-    <button onClick={() => write()} type="button">Cancel Lottery</button>
-    {isLoading && <p>Waiting for user confirmation...</p>}
+    {isLoading && <p className="form-status">Waiting for user confirmation...</p>}
     {isSuccess && (
-      txError ? (<p>Transaction error!</p>)
-      : txLoading ? (<p>Waiting for transaction...</p>)
-      : txSuccess ? (<p>Lottery Processing Initiated!</p>)
-      : (<p>Transaction sent...</p>))}
-    {isError && <p>Error!</p>}
+      txError ? (<p className="form-status error">Transaction error!</p>)
+      : txLoading ? (<p className="form-status">Waiting for transaction...</p>)
+      : txSuccess ? (<p className="form-status">Lottery Processing Initiated!</p>)
+      : (<p className="form-status">Transaction sent...</p>))}
+    {isError && <p className="form-status error">Error!</p>}
+    <button onClick={() => write()} type="button">Cancel Lottery</button>
   </>);
 }
 
@@ -42,27 +42,28 @@ export function RefundTickets({ chainId, tokenId, contracts, qtyBought }) {
   const { isError: txError, isLoading: txLoading, isSuccess: txSuccess } = useWaitForTransaction({
     hash: data ? data.hash : null,
   });
+  if(qtyBought < 1) return;
   if(readRefundLoading) {
-    return (<p>Loading refund status...</p>);
+    return (<p className="form-status">Loading refund status...</p>);
   }
 
   if(readRefundError) {
-    return (<p>Error loading refund status!</p>);
+    return (<p className="form-status error">Error loading refund status!</p>);
   }
 
   if(refundStatus[0].result) return (<>
-    <p>Refund already claimed!</p>
+    <p className="form-status">Refund already claimed!</p>
   </>);
 
   return (<>
-    <button onClick={() => write()} type="button">Refund Tickets</button>
-    {isLoading && <p>Waiting for user confirmation...</p>}
+    {isLoading && <p className="form-status">Waiting for user confirmation...</p>}
     {isSuccess && (
-      txError ? (<p>Transaction error!</p>)
-      : txLoading ? (<p>Waiting for transaction...</p>)
-      : txSuccess ? (<p>Lottery Processing Initiated!</p>)
-      : (<p>Transaction sent...</p>))}
-    {isError && <p>Error!</p>}
+      txError ? (<p className="form-status error">Transaction error!</p>)
+      : txLoading ? (<p className="form-status">Waiting for transaction...</p>)
+      : txSuccess ? (<p className="form-status">Lottery Processing Initiated!</p>)
+      : (<p className="form-status">Transaction sent...</p>))}
+    {isError && <p className="form-status error">Error!</p>}
+    <button onClick={() => write()} type="button">Refund Tickets</button>
   </>);
 }
 

@@ -87,23 +87,26 @@ export function Lotto() {
   });
 
   if(!isKnownLotto) {
-    return (<p>Unknown Lottery Contract</p>);
+    return (<p className="form-status error">Unknown Lottery Contract</p>);
   }
 
   if(isLoading) {
-    return (<p>Loading lottery details...</p>);
+    return (<p className="form-status">Loading lottery details...</p>);
   }
 
   if(isError || data[3].status === 'failure' || data[7].status === 'failure') {
-    return (<p>Error loading lottery details!</p>);
+    return (<p className="form-status error">Error loading lottery details!</p>);
   }
 
   const validator = contracts.validators.filter(x =>
     isAddressEqual(x.address, data[0].result[5]));
 
   return (<>
+  <fieldset>
+    <LotteryStatus {...{data}} />
     <h1>{data[0].result[0]}</h1>
     <p><Linkify>{data[0].result[1]}</Linkify></p>
+    <h2>{data[4].result[0].toString()} winning ticket{data[4].result[0] > 1 ? 's' : ''}</h2>
     <div id="share-config">
       <PieChart data={data[3].result.map(share => [
         isWinner(share.recipient) ? 0 : share.recipient,
@@ -118,8 +121,6 @@ export function Lotto() {
         ))}
       </div>
     </div>
-    {isAddressEqual(account, data[7].result) && data[2].result === 0 &&
-      <CancelLottery {...{chainId, tokenId, contracts}} />}
     <dl>
       <dt>Ticket Price</dt>
       <dd><TokenDetails {...{contracts}} address={data[0].result[3]} amount={data[0].result[2]} /></dd>
@@ -132,38 +133,37 @@ export function Lotto() {
       </>) : (
         <span className="unknown">Unknown validator: <DisplayAddress value={data[0].result[5]} {...{contracts}} /></span>
       )}</dd>
-      <dt>Number of Winners</dt>
-      <dd>{data[4].result[0].toString()}</dd>
       <dt>Tickets Sold</dt>
       <dd>{data[1].result.toString()}</dd>
       <dt>My Tickets Bought</dt>
       <dd>{data[5].result.toString()}</dd>
-      <dt>Lottery Status</dt>
-      <dd><LotteryStatus {...{data}} /></dd>
     </dl>
+    {isAddressEqual(account, data[7].result) && data[2].result === 0 &&
+      <CancelLottery {...{chainId, tokenId, contracts}} />}
+  </fieldset>
     {data[2].result === 0 ? Number(data[0].result[4]) * 1000 > Date.now() ?
       (<TicketVendor {...{chainId, collection, tokenId, contracts}} config={data[0].result} />) :
       (<>
-        <button onClick={() => beginWrite()} type="button">Begin Processing</button>
-        {beginLoading && <p>Waiting for user confirmation...</p>}
+        {beginLoading && <p className="form-status">Waiting for user confirmation...</p>}
         {beginSuccess && (
-          beginTxError ? (<p>Transaction error!</p>)
-          : beginTxLoading ? (<p>Waiting for transaction...</p>)
-          : beginTxSuccess ? (<p>Lottery Processing Initiated!</p>)
-          : (<p>Transaction sent...</p>))}
-        {beginError && <p>Error!</p>}
+          beginTxError ? (<p className="form-status error">Transaction error!</p>)
+          : beginTxLoading ? (<p className="form-status">Waiting for transaction...</p>)
+          : beginTxSuccess ? (<p className="form-status">Lottery Processing Initiated!</p>)
+          : (<p className="form-status">Transaction sent...</p>))}
+        {beginError && <p className="form-status error">Error!</p>}
+        <button onClick={() => beginWrite()} type="button">Begin Processing</button>
       </>) :
       data[2].result === 1 ?
       (<>
         <WaitForRandomFulfilled {...{chainId, tokenId, contracts}} randomSource={data[6].result}>
-          <button onClick={() => endWrite()} type="button">Finish Processing</button>
-          {endLoading && <p>Waiting for user confirmation...</p>}
+          {endLoading && <p className="form-status">Waiting for user confirmation...</p>}
           {endSuccess && (
-            endTxError ? (<p>Transaction error!</p>)
-            : endTxLoading ? (<p>Waiting for transaction...</p>)
-            : endTxSuccess ? (<p>Lottery Processing Completed!</p>)
-            : (<p>Transaction sent...</p>))}
-          {endError && <p>Error!</p>}
+            endTxError ? (<p className="form-status error">Transaction error!</p>)
+            : endTxLoading ? (<p className="form-status">Waiting for transaction...</p>)
+            : endTxSuccess ? (<p className="form-status">Lottery Processing Completed!</p>)
+            : (<p className="form-status">Transaction sent...</p>))}
+          {endError && <p className="form-status error">Error!</p>}
+          <button onClick={() => endWrite()} type="button">Finish Processing</button>
         </WaitForRandomFulfilled>
       </>) : data[2].result === 2 ? (
         <LotteryWinners config={data[0].result} shares={data[3].result} {...{chainId, tokenId, contracts}} />
@@ -193,24 +193,24 @@ function LotteryWinners({ chainId, tokenId, contracts, shares, config }) {
     contracts: toLoad,
   });
   if(isLoading) {
-    return (<p>Loading lottery recipients...</p>);
+    return (<p className="form-status">Loading lottery recipients...</p>);
   }
 
   if(isError) {
-    return (<p>Error loading lottery recipients!</p>);
+    return (<p className="form-status error">Error loading lottery recipients!</p>);
   }
 
   const recipients = [];
   for(let i = 0; i < shares.length; i++) {
     recipients.push({ addr: data[2 * i].result, amount: data[2 * i + 1].result });
   }
-  return (<ul className="recipients">
+  return (<fieldset><ul className="recipients">
     {recipients.map((recip, i) => (<li>
       <DisplayAddress value={recip.addr} {...{contracts}} />
       &nbsp;{isWinner(shares[i].recipient) ? 'won' : 'received'}&nbsp;
       <TokenDetails {...{contracts}} address={config[3]} amount={recip.amount} />
     </li>))}
-  </ul>);
+  </ul></fieldset>);
 }
 
 function WaitForRandomFulfilled({ chainId, tokenId, contracts, randomSource, children }) {
@@ -243,7 +243,7 @@ function WaitForRandomFulfilled({ chainId, tokenId, contracts, randomSource, chi
     );
   } else {
     return (
-      <p>Waiting for random fulfillment...</p>
+      <p className="form-status">Waiting for random fulfillment...</p>
     );
   }
 }
@@ -266,12 +266,12 @@ function LotteryStatus({ data }) {
 
   return (<>
     {data[2].result === 0 ? Number(data[0].result[4]) * 1000 > Date.now() ?
-        (<span>Ticket sales open for <Remaining value={Number(data[0].result[4])} /></span>) :
-        (<span>Ticket sales ended, awaiting processing...</span>) :
+        (<span className="status open">Ticket sales open for <Remaining value={Number(data[0].result[4])} /></span>) :
+        (<span className="status ended">Ticket sales ended, awaiting processing...</span>) :
         data[2].result === 1 ?
-          (<span>Processing begun, awaiting random values or final processing</span>) :
-          data[2].result === 2 ? (<span>Lottery completed!</span>) :
-          data[2].result === 3 ? (<span>Lottery cancelled!</span>) : null}
+          (<span className="status processing">Processing begun, awaiting random values or final processing</span>) :
+          data[2].result === 2 ? (<span className="status complete">Lottery completed!</span>) :
+          data[2].result === 3 ? (<span className="status cancelled">Lottery cancelled!</span>) : null}
   </>);
 }
 

@@ -75,23 +75,25 @@ export function TicketVendor({ chainId, collection, tokenId, contracts, config }
           <input type="number" min="0" value={qty} onChange={(e) => setQty(isNaN(e.target.value) ? 0 : Number(e.target.value))} />
           {insufficientBalance && <span className="error">Insufficient Balance!</span>}
         </div>
+      </fieldset>
+        {approveLoading && <p className="form-status">Waiting for user confirmation...</p>}
+        {approveSuccess && (
+          approveTxError ? (<p className="form-status error">Approval transaction error!</p>)
+          : approveTxLoading ? (<p className="form-status">Waiting for approval transaction...</p>)
+          : approveTxSuccess ? (<p className="form-status">Approval success!</p>)
+          : (<p className="form-status">Approval transaction sent...</p>))}
+        {approveTxError && <p className="form-status error">Error!</p>}
+        {buyLoading && <p className="form-status">Waiting for user confirmation...</p>}
+        {buySuccess && (
+          buyTxError ? (<p className="form-status error">Transaction error!</p>)
+          : buyTxLoading ? (<p className="form-status">Waiting for transaction...</p>)
+          : buyTxSuccess ? (<p className="form-status">Tickets Purchased!</p>)
+          : (<p className="form-status">Transaction sent...</p>))}
+        {buyTxError && <p className="form-status error">Error!</p>}
+      <div className="field">
         <button disabled={!needsApproval}>Approve</button>
         <button disabled={needsApproval}>Buy Tickets</button>
-        {approveLoading && <p>Waiting for user confirmation...</p>}
-        {approveSuccess && (
-          approveTxError ? (<p>Approval transaction error!</p>)
-          : approveTxLoading ? (<p>Waiting for approval transaction...</p>)
-          : approveTxSuccess ? (<p>Approval success!</p>)
-          : (<p>Approval transaction sent...</p>))}
-        {approveTxError && <p>Error!</p>}
-        {buyLoading && <p>Waiting for user confirmation...</p>}
-        {buySuccess && (
-          buyTxError ? (<p>Transaction error!</p>)
-          : buyTxLoading ? (<p>Waiting for transaction...</p>)
-          : buyTxSuccess ? (<p>Tickets Purchased!</p>)
-          : (<p>Transaction sent...</p>))}
-        {buyTxError && <p>Error!</p>}
-      </fieldset>
+      </div>
     </form>
   );
 }

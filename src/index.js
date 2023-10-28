@@ -38,9 +38,6 @@ window.Buffer = window.Buffer || Buffer;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <div id="bg"></div>
-    <div id="rightbar">Play Responsibly</div>
-    <div id="leftbar">clonk.me</div>
     <WagmiConfig config={wagmiConfig}>
       <RainbowKitProvider chains={chains}>
         <Router />
