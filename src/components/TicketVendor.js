@@ -32,7 +32,7 @@ export function TicketVendor({ chainId, collection, tokenId, contracts, config }
   const insufficientBalance = approvalData && (approvalData[0].result < buyAmount);
 
   const { data: approveData, isLoading: approveLoading, isError: approveError, isSuccess: approveSuccess, write: approveWrite } = useContractWrite({
-    chainId: chain.id,
+    chainId: chain && chain.id,
     address: config[3],
     abi: erc20ABI,
     functionName: 'approve',
@@ -66,6 +66,7 @@ export function TicketVendor({ chainId, collection, tokenId, contracts, config }
       });
     }
   }
+  if(!account) return;
   return (
     <form onSubmit={handleSubmit}>
       <fieldset>

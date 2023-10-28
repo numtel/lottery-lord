@@ -135,10 +135,12 @@ export function Lotto() {
       )}</dd>
       <dt>Tickets Sold</dt>
       <dd>{data[1].result.toString()}</dd>
-      <dt>My Tickets Bought</dt>
-      <dd>{data[5].result.toString()}</dd>
+      {data[5].result && <>
+        <dt>My Tickets Bought</dt>
+        <dd>{data[5].result.toString()}</dd>
+      </>}
     </dl>
-    {isAddressEqual(account, data[7].result) && data[2].result === 0 &&
+    {account && isAddressEqual(account, data[7].result) && data[2].result === 0 &&
       <CancelLottery {...{chainId, tokenId, contracts}} />}
   </fieldset>
     {data[2].result === 0 ? Number(data[0].result[4]) * 1000 > Date.now() ?

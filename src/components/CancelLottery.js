@@ -42,7 +42,7 @@ export function RefundTickets({ chainId, tokenId, contracts, qtyBought }) {
   const { isError: txError, isLoading: txLoading, isSuccess: txSuccess } = useWaitForTransaction({
     hash: data ? data.hash : null,
   });
-  if(qtyBought < 1) return;
+  if(!account || qtyBought < 1) return;
   if(readRefundLoading) {
     return (<p className="form-status">Loading refund status...</p>);
   }
