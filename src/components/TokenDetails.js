@@ -2,11 +2,12 @@ import { erc20ABI, useContractReads } from 'wagmi';
 import { formatUnits } from 'viem';
 
 export function TokenDetails({ address, contracts, amount }) {
+  const general = { address, abi: erc20ABI, chainId: contracts.LotteryERC721.chainId};
   const { data, isError, isLoading } = useContractReads({
     contracts: [
-      { address, abi: erc20ABI, functionName: 'name' },
-      { address, abi: erc20ABI, functionName: 'symbol' },
-      { address, abi: erc20ABI, functionName: 'decimals' },
+      { ...general, functionName: 'name',},
+      { ...general, functionName: 'symbol' },
+      { ...general, functionName: 'decimals' },
     ],
   });
   if(isLoading) return (

@@ -14,7 +14,7 @@ import './styles.css';
 
 
 const { chains, publicClient } = configureChains(
-  [mainnet, optimism, goerli, polygon, {...polygonMumbai, rpcUrls: {
+  [mainnet, /*optimism, goerli, polygon,*/ {...polygonMumbai, rpcUrls: {
     public: { http: ['https://rpc.ankr.com/polygon_mumbai'] },
     default: { http: ['https://rpc.ankr.com/polygon_mumbai'] },
   }}],

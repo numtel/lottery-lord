@@ -1,7 +1,7 @@
 
 html { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);}
-body { font-family: sans-serif; min-height:100vh; margin:0; padding:0 0 30px 0; }
-#root { position:relative; }
+body { font-family: sans-serif; margin:0; padding:0 0 30px 0; }
+#root { position:relative; min-height:100vh; }
 main {  max-width:720px; margin:0 auto; }
 
 a { color:#fff; }
