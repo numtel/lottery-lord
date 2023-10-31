@@ -60,6 +60,8 @@ button+button { margin-left: 15px; }
 #share-config .pie-chart {max-width: 300px; margin:10px auto;}
 }
 
+a.discussion {font-size:90%; color:#0009; display:block;}
+
 dt, h2 {border-top:1px dotted #000c; }
 dt {font-size:90%; }
 dd {padding-bottom:5px; }
