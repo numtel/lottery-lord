@@ -1,7 +1,7 @@
 import { erc20ABI, useContractReads } from 'wagmi';
 import { formatUnits } from 'viem';
 
-export function TokenDetails({ address, contracts, amount }) {
+export function TokenDetails({ address, contracts, amount, symbol }) {
   const general = { address, abi: erc20ABI, chainId: contracts.LotteryERC721.chainId};
   const { data, isError, isLoading } = useContractReads({
     contracts: [
@@ -18,6 +18,10 @@ export function TokenDetails({ address, contracts, amount }) {
   );
   if(data) return (<>
     {amount !== undefined && formatUnits(amount, data[2].result)}&nbsp;
-    <a href={`${contracts.explorer}address/${address}`} target="_blank" rel="noreferrer">{ data[0].result } ({data[1].result})</a>
+    <a href={`${contracts.explorer}address/${address}`} target="_blank" rel="noreferrer">{ symbol ?
+      data[1].result :
+      <>{ data[0].result } ({data[1].result})</>
+    }
+    </a>
   </>);
 }

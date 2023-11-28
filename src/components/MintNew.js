@@ -111,7 +111,7 @@ export function MintNew() {
           topics: log.topics,
           strict: false,
         }));
-      navigate(`/lotto/${chain.id}/${contracts.LotteryERC721.address}/${decoded[0].args.tokenId}`);
+      navigate(`/details/${chain.id}/${contracts.LotteryERC721.address}/${decoded[0].args.tokenId}`);
     },
   });
   const shareChanged = (index, newValue) => {

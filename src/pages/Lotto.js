@@ -107,7 +107,7 @@ export function Lotto() {
     <h1>{data[0].result[0]}</h1>
     <p><Linkify>{data[0].result[1]}</Linkify></p>
     <a className="discussion" href={`https://clonk.me/nft/${chainId}/${collection}/${tokenId}`} target="_blank" rel="noreferrer">Discuss on clonk.me...</a>
-    <h2>{data[4].result[0].toString()} winning ticket{data[4].result[0] > 1 ? 's' : ''}</h2>
+    <h2>{data[4].result[0].toString()} winning ticket{data[4].result[0] !== 1n ? 's' : ''}</h2>
     <div id="share-config">
       <PieChart data={data[3].result.map(share => [
         isWinner(share.recipient) ? 0 : share.recipient,

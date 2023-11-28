@@ -1,8 +1,8 @@
-
+* { box-sizing: border-box; }
 html { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);}
-body { font-family: sans-serif; margin:0; padding:0 0 30px 0; }
+body { font-family: sans-serif; margin:0; padding:0; }
 #root { position:relative; min-height:100vh; }
-main {  max-width:720px; margin:0 auto; }
+main {  max-width:720px; margin:0 auto 30px; }
 
 a { color:#fff; }
 
@@ -24,7 +24,7 @@ a { color:#fff; }
 
 header>a { text-decoration:none;}
 header>a>h1 {margin:0; background:url(logo.svg) no-repeat top center; background-size: 150px 150px; padding: 120px 0 0 0; text-align:center; color:#000; }
-header>a>h1 span.ball { border:1px solid #222; border-radius:50%; font-size: 1.9rem; line-height:1.9rem; width: 1.9rem; display:inline-block; text-transform:uppercase; padding: 5px; margin:0 1px; }
+header>a>h1 span.ball { border:1px solid #222; border-radius:50%; font-size: 1.9rem; line-height:1.9rem; width: calc(1.9rem + 10px); display:inline-block; text-transform:uppercase; padding: 5px; margin:0 1px; }
 header>a>h1 span.launcha { display:block; text-transform:lowercase; font-size:1.5rem; line-height:1.5rem; }
 #connect>div { justify-content:center; padding: 20px 0; }
 
@@ -77,6 +77,25 @@ dd {padding-bottom:5px; }
 .form-status.error {color:#900;}
 
 span.error { color: #900; display:block; }
+
+fieldset.ticket { display:flex; margin:0; border-radius:0; height:100vh; padding:0; background:linear-gradient(#ccc 0, #eee 100%); }
+fieldset.ticket a { color:#444; }
+fieldset.ticket .status { padding:1px 3px; border-radius:8px 0 0 0; position:absolute; bottom:0; right:0; margin:0; }
+fieldset.ticket .lotto-text { height:100vh; overflow:auto; padding:4px; }
+fieldset.ticket .lotto-details { height:100vh; padding:4px; }
+fieldset.ticket #share-config { height:calc(100vh - 10px); width:100%; display:none; }
+fieldset.ticket.show-shares #share-config { display:flex;}
+fieldset.ticket.show-shares .description,
+fieldset.ticket.show-shares .lotto-text{ display:none;}
+
+fieldset.ticket h1 { font-size:1rem; margin:0; }
+
+fieldset.ticket .lotto-details .description>span {display:block; white-space:nowrap;}
+fieldset.ticket button { margin-bottom:5px; }
+fieldset.ticket .shares { flex:1; overflow:auto; }
+fieldset.ticket #share-config .pie-chart { width: calc(100vh - 20px); height: calc(100vh - 20px); margin-right:10px; }
+
+
 
 #starbox { position:absolute; z-index:-1; top:0; left:0; right:0; height:100%; overflow:hidden;}
 
